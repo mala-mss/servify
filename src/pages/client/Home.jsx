@@ -1,0 +1,754 @@
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { BOOKINGS, INITIAL_NOTIFICATIONS } from "../../utils/mockData";
+
+// Mock hook — replace with: import { useAuth } from '@/context/AuthContext'
+const useAuth = () => ({ user: { name: "malak" } });
+
+const SERVICES = ["cleaning", "plumbing", "electrical", "childcare", "gardening", "tutoring"];
+
+const STATS = [
+  { label: "Verified Pros", value: "1,200+" },
+  { label: "Happy Clients", value: "45k" },
+  { label: "Services Completed", value: "120k" },
+  { label: "Avg. Rating", value: "4.9/5" },
+];
+
+const CATEGORIES = [
+  { id: 1, name: "Home Cleaning", icon: "✦", desc: "Deep clean, regular upkeep", count: 48 },
+  { id: 2, name: "Plumbing", icon: "◈", desc: "Repairs, installations", count: 31 },
+  { id: 3, name: "Electrical", icon: "◉", desc: "Wiring, fixtures, safety", count: 27 },
+  { id: 4, name: "Childcare", icon: "◎", desc: "Babysitting, nannying", count: 19 },
+  { id: 5, name: "Gardening", icon: "✿", desc: "Landscaping, maintenance", count: 22 },
+  { id: 6, name: "Tutoring", icon: "◆", desc: "Academic, music, languages", count: 35 },
+];
+
+const CITIES = ["Algiers", "Oran", "Constantine", "Annaba", "Sétif", "Mila","ferdjioua"];
+
+const FAQS = [
+  { q: "How do I pay for a service?", a: "You can pay securely via credit card or digital wallet directly through our platform after the service is completed." },
+  { q: "Are the providers background checked?", a: "Yes, every professional on Servify undergoes a multi-step verification process including identity and background checks." },
+  { q: "Can I cancel a booking?", a: "Absolutely. You can cancel for free up to 24 hours before your scheduled appointment." },
+];
+
+const FEATURED_PROVIDERS = [
+  { id: 1, name: "Alex Johnson", service: "Master Plumber", rating: 4.9, reviews: 124, img: "A" },
+  { id: 2, name: "Maria Garcia", service: "Cleaning Expert", rating: 4.8, reviews: 89, img: "M" },
+  { id: 3, name: "David Chen", service: "Electrician", rating: 5.0, reviews: 56, img: "D" },
+];
+
+const TESTIMONIALS = [
+  { id: 1, text: "The easiest way I've ever found a reliable electrician. Booked in minutes!", author: "Sarah K.", role: "Homeowner" },
+  { id: 2, text: "Servify saved my weekend when our pipes burst. Truly professional service.", author: "James L.", role: "Tenant" },
+];
+
+const PALETTES = {
+  dark: {
+    primary: "#2FB0BC",
+    secondary: "#6BC8B2",
+    accent: "#7ED4CA",
+    bg: "#0e0e0e",
+    cardBg: "rgba(255,255,255,0.02)",
+    text: "#e8e6e0",
+    textMuted: "rgba(232,230,224,0.5)",
+    border: "rgba(255,255,255,0.06)",
+    navBg: "rgba(14,14,14,0.85)",
+    glow: "rgba(47,176,188,0.04)",
+    grid: "rgba(255,255,255,0.02)"
+  },
+  light: {
+    primary: "#2FB0BC",
+    secondary: "#6BC8B2",
+    accent: "#7ED4CA",
+    bg: "#F8FBFB",
+    cardBg: "#FFFFFF",
+    text: "#2C3E50",
+    textMuted: "rgba(44,62,80,0.5)",
+    border: "#E0E7E7",
+    navBg: "rgba(248,251,251,0.85)",
+    glow: "rgba(47,176,188,0.06)",
+    grid: "#E0E7E7"
+  }
+};
+
+const getStatusStyle = (status, theme) => {
+  const isDark = theme === 'dark';
+  const colors = {
+    upcoming:  { color: "#6BC8B2", bg: isDark ? "rgba(107,200,178,0.15)" : "rgba(107,200,178,0.1)" },
+    completed: { color: "#2FB0BC", bg: isDark ? "rgba(47,176,188,0.15)" : "rgba(47,176,188,0.1)" },
+    confirmed: { color: "#6BC8B2", bg: isDark ? "rgba(107,200,178,0.15)" : "rgba(107,200,178,0.1)" },
+    pending:   { color: "#7ED4CA", bg: isDark ? "rgba(126,212,202,0.15)" : "rgba(126,212,202,0.1)" },
+    cancelled: { color: "#f87171", bg: isDark ? "rgba(248,113,113,0.15)" : "rgba(248,113,113,0.1)" },
+  };
+  return colors[status] ?? { color: "#e8e6e0", bg: "rgba(255,255,255,0.1)" };
+};
+
+// ── ANIMATION VARIANTS ──
+const sectionVariants = {
+  hidden: { opacity: 0, y: 60 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { 
+      duration: 0.8, 
+      ease: [0.21, 0.45, 0.32, 0.9],
+      staggerChildren: 0.15
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: { 
+    opacity: 1, 
+    y: 0,
+    transition: { duration: 0.6, ease: "easeOut" }
+  }
+};
+
+const viewportConfig = { once: false, amount: 0.2 };
+
+function AccordionItem({ faq, theme }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const p = PALETTES[theme];
+  
+  return (
+    <div style={{ ...styles.faqItem, borderBottomColor: p.border }}>
+      <div style={styles.faqHeader} onClick={() => setIsOpen(!isOpen)}>
+        <span style={{ ...styles.faqQuestion, color: p.text }}>{faq.q}</span>
+        <span style={{ ...styles.faqToggle, color: p.primary, transform: isOpen ? "rotate(45deg)" : "rotate(0)" }}>+</span>
+      </div>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            style={{ overflow: "hidden" }}
+          >
+            <div style={{ ...styles.faqAnswer, color: p.textMuted }}>{faq.a}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export default function Home() {
+  const { user } = useAuth();
+  const [theme, setTheme] = useState("dark"); // Default to dark
+  const [serviceIndex, setServiceIndex] = useState(0);
+  const [fading, setFading] = useState(false);
+  const [search, setSearch] = useState("");
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [showNotif, setShowNotif] = useState(false);
+  const [bookings, setBookings] = useState(BOOKINGS);
+  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const notifRef = useRef(null);
+
+  const p = PALETTES[theme];
+
+  // Update dynamic notifications based on booking status
+  useEffect(() => {
+    const paymentNotifs = [];
+    bookings.forEach(bk => {
+      if (!bk.paidFirst) {
+        paymentNotifs.push({
+          id: `pay1-${bk.id}`,
+          title: "Deposit Due",
+          desc: `Initial 50% ($${bk.price/2}) for ${bk.service} is pending.`,
+          time: "Action required",
+          unread: true,
+          type: "payment",
+          bookingId: bk.id
+        });
+      }
+      if (bk.status === "completed" && !bk.paidSecond) {
+        paymentNotifs.push({
+          id: `pay2-${bk.id}`,
+          title: "Balance Due",
+          desc: `Final 50% ($${bk.price/2}) for ${bk.service} is ready to pay.`,
+          time: "Service completed",
+          unread: true,
+          type: "payment",
+          bookingId: bk.id
+        });
+      }
+    });
+
+    setNotifications(prev => {
+      const filtered = prev.filter(n => n.type !== "payment");
+      return [...paymentNotifs, ...filtered];
+    });
+  }, [bookings]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setFading(true);
+      setTimeout(() => {
+        setServiceIndex((i) => (i + 1) % SERVICES.length);
+        setFading(false);
+      }, 300);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handle = (e) => setMousePos({ x: e.clientX, y: e.clientY });
+    window.addEventListener("mousemove", handle);
+    return () => window.removeEventListener("mousemove", handle);
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setShowNotif(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
+
+  return (
+    <div style={{ ...styles.root, background: p.bg, color: p.text }}>
+      {/* Background Texture */}
+      <div style={{ 
+        ...styles.bgGrid, 
+        backgroundImage: theme === 'dark' 
+          ? `radial-gradient(circle at 2px 2px, rgba(255,255,255,0.02) 1px, transparent 0)`
+          : `radial-gradient(circle at 2px 2px, ${p.grid} 1px, transparent 0)`
+      }} />
+      
+      <div style={{ 
+        ...styles.glow, 
+        left: mousePos.x - 300, 
+        top: mousePos.y - 300,
+        background: `radial-gradient(circle, ${p.glow} 0%, transparent 70%)`
+      }} />
+
+      {/* ── NAV ── */}
+      <nav style={{ ...styles.nav, background: p.navBg, borderBottomColor: p.border }}>
+        <a href="/client/home" style={{ ...styles.navLogo, textDecoration: 'none' }}>
+          <span style={{ ...styles.logoMark, color: p.primary }}>◈</span>
+          <span style={{ ...styles.logoText, color: p.text }}>Servify</span>
+        </a>
+        <div style={styles.navLinks}>
+          <a href="/client/browse" style={{ ...styles.navLink, color: p.textMuted }}>Browse</a>
+          <a href="/client/my-bookings" style={{ ...styles.navLink, color: p.textMuted }}>My bookings</a>
+          
+          <div style={{ position: "relative" }} ref={notifRef}>
+            <button 
+              onClick={() => setShowNotif(!showNotif)} 
+              style={{ ...styles.navLinkBtn, color: p.textMuted }}
+            >
+              Notifications
+              {notifications.some(n => n.unread) && <span style={{ ...styles.navNotifDot, background: p.primary }} />}
+            </button>
+            
+            <AnimatePresence>
+              {showNotif && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  transition={{ duration: 0.2 }}
+                  style={{ ...styles.notifDropdown, background: p.cardBg, borderColor: p.border, backdropFilter: "blur(20px)" }}
+                >
+                  <div style={styles.notifDropHeader}>
+                    <span style={{ fontSize: 14, fontWeight: 600 }}>Notifications</span>
+                    <a href="/client/notifications" style={{ fontSize: 11, color: p.primary }}>View all</a>
+                  </div>
+                  <div style={styles.notifDropList}>
+                    {notifications.length === 0 && (
+                      <div style={{ padding: 20, textAlign: 'center', fontSize: 12, color: p.textMuted }}>No new notifications</div>
+                    )}
+                    {notifications.map(n => (
+                      <div key={n.id} style={{ ...styles.notifDropItem, borderBottomColor: p.border }}>
+                        <div style={styles.notifDropTitleRow}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: n.type === 'payment' ? '#F59E0B' : p.text }}>{n.title}</span>
+                          <span style={{ fontSize: 10, opacity: 0.5 }}>{n.time}</span>
+                        </div>
+                        <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>{n.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+        <div style={styles.navRight}>
+          <button onClick={toggleTheme} style={{ ...styles.themeBtn, color: p.text, background: p.cardBg, borderColor: p.border }}>
+            {theme === "dark" ? "☼" : "☾"}
+          </button>
+          <a href="/client/profile" style={{ ...styles.avatarBtn, background: theme === 'dark' ? "rgba(47,176,188,0.15)" : "#D6FFF9", borderColor: p.accent, color: p.primary }}>
+            {user?.name?.[0]?.toUpperCase() ?? "U"}
+          </a>
+        </div>
+      </nav>
+
+      {/* ── HERO ── */}
+      <motion.section 
+        style={styles.hero}
+        initial="hidden"
+        animate="visible"
+        variants={sectionVariants}
+      >
+        <motion.div style={{ ...styles.statusPill, background: p.cardBg, borderColor: p.border, color: p.textMuted }} variants={itemVariants}>
+          <span style={{ ...styles.statusDot, background: p.secondary, boxShadow: `0 0 6px ${p.secondary}` }} />
+          2 active bookings
+        </motion.div>
+
+        <motion.h1 style={{ ...styles.headline, color: p.text }} variants={itemVariants}>
+          <span style={{ color: p.text }}>Book a </span>
+          <span style={{ ...styles.headlineAccent, color: p.primary, opacity: fading ? 0 : 1, transform: fading ? "translateY(10px)" : "translateY(0)" }}>
+            {SERVICES[serviceIndex]}
+          </span>
+          <br />
+          <span style={{ color: p.text }}>service today.</span>
+        </motion.h1>
+
+        <motion.p style={{ ...styles.subline, color: p.textMuted }} variants={itemVariants}>
+          Find trusted professionals in your area. Describe what you need, pick a time, and we handle the rest.
+        </motion.p>
+
+        <motion.form style={{ ...styles.searchRow, background: p.cardBg, borderColor: p.border }} variants={itemVariants}>
+          <div style={styles.searchWrap}>
+            <span style={{ ...styles.searchIcon, color: p.border }}>⌕</span>
+            <input
+              style={{ ...styles.searchInput, color: p.text }}
+              placeholder="What service do you need?"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <button type="submit" style={{ ...styles.searchBtn, background: p.primary }}>Find a provider</button>
+        </motion.form>
+      </motion.section>
+
+      {/* ── STATS ── */}
+      <motion.section 
+        style={{ ...styles.statsSection, borderColor: p.border }} 
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        variants={sectionVariants}
+      >
+        {STATS.map((s, i) => (
+          <motion.div key={i} style={styles.statItem} variants={itemVariants}>
+            <div style={{ ...styles.statValue, color: p.primary }}>{s.value}</div>
+            <div style={{ ...styles.statLabel, color: p.textMuted }}>{s.label}</div>
+          </motion.div>
+        ))}
+      </motion.section>
+
+      {/* ── HOW IT WORKS ── */}
+      <motion.section 
+        style={styles.section} 
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        variants={sectionVariants}
+      >
+        <motion.div style={{ ...styles.sectionHeader, borderBottomColor: p.border }} variants={itemVariants}>
+          <h2 style={{ ...styles.sectionTitle, color: p.text }}>How it works</h2>
+        </motion.div>
+        <div style={styles.stepsGrid}>
+          {[
+            { step: "01", title: "Choose a service", desc: "Select from our range of verified professional services." },
+            { step: "02", title: "Pick a provider", desc: "Compare profiles, ratings, and transparent pricing." },
+            { step: "03", title: "Book & Relax", desc: "Schedule a time that works and get the job done right." }
+          ].map((s, i) => (
+            <motion.div key={i} style={{ ...styles.stepCard, background: p.cardBg, borderColor: p.border }} variants={itemVariants} whileHover={{ borderColor: p.primary }}>
+              <div style={{ ...styles.stepNumber, color: p.secondary }}>{s.step}</div>
+              <div style={{ ...styles.stepTitle, color: p.text }}>{s.title}</div>
+              <div style={{ ...styles.stepDesc, color: p.textMuted }}>{s.desc}</div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* ── CATEGORIES ── */}
+      <motion.section 
+        style={styles.section} 
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        variants={sectionVariants}
+      >
+        <motion.div style={{ ...styles.sectionHeader, borderBottomColor: p.border }} variants={itemVariants}>
+          <h2 style={{ ...styles.sectionTitle, color: p.text }}>Browse by category</h2>
+          <a href="/client/browse" style={{ ...styles.sectionLink, color: p.primary }}>View all →</a>
+        </motion.div>
+        <div style={styles.categoryGrid}>
+          {CATEGORIES.map((cat) => (
+            <motion.a
+              href={`/client/browse?category=${cat.id}`}
+              key={cat.id}
+              variants={itemVariants}
+              style={{ ...styles.categoryCard, background: p.cardBg, borderColor: p.border }}
+              whileHover={{ y: -8, borderColor: p.primary, background: theme === 'dark' ? "rgba(47,176,188,0.05)" : "rgba(47,176,188,0.03)" }}
+            >
+              <div style={{ ...styles.catIcon, color: p.primary }}>{cat.icon}</div>
+              <div style={{ ...styles.catName, color: p.text }}>{cat.name}</div>
+              <div style={{ ...styles.catDesc, color: p.textMuted }}>{cat.desc}</div>
+              <div style={{ ...styles.catCount, color: p.secondary }}>{cat.count} providers</div>
+            </motion.a>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* ── COVERAGE ── */}
+      <motion.section 
+        style={styles.section} 
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        variants={sectionVariants}
+      >
+        <motion.div style={{ ...styles.sectionHeader, borderBottomColor: p.border }} variants={itemVariants}>
+          <h2 style={{ ...styles.sectionTitle, color: p.text }}>Available in your city</h2>
+        </motion.div>
+        <motion.div style={styles.cityGrid} variants={itemVariants}>
+          {CITIES.map((city, i) => (
+            <motion.div key={i} style={{ ...styles.cityItem, color: p.textMuted }} whileHover={{ color: p.primary }}>
+              ◈ {city}
+            </motion.div>
+          ))}
+        </motion.div>
+      </motion.section>
+
+      {/* ── FEATURED PROVIDERS ── */}
+      <motion.section 
+        style={styles.section} 
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        variants={sectionVariants}
+      >
+        <motion.div style={{ ...styles.sectionHeader, borderBottomColor: p.border }} variants={itemVariants}>
+          <h2 style={{ ...styles.sectionTitle, color: p.text }}>Top rated pros</h2>
+          <a href="/client/browse" style={{ ...styles.sectionLink, color: p.primary }}>See all →</a>
+        </motion.div>
+        <div style={styles.providerGrid}>
+          {FEATURED_PROVIDERS.map((p_item) => (
+            <motion.div key={p_item.id} style={{ ...styles.providerCard, background: p.cardBg, borderColor: p.border }} variants={itemVariants} whileHover={{ y: -5, borderColor: p.primary }}>
+              <div style={{ ...styles.providerImg, background: theme === 'dark' ? "rgba(255,255,255,0.05)" : "#D6FFF9", color: p.primary }}>{p_item.img}</div>
+              <div style={styles.providerInfo}>
+                <div style={{ ...styles.providerName, color: p.text }}>{p_item.name}</div>
+                <div style={{ ...styles.providerService, color: p.textMuted }}>{p_item.service}</div>
+                <div style={{ ...styles.providerRating, color: p.primary }}>★ {p_item.rating} ({p_item.reviews} reviews)</div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* ── APP PROMO ── */}
+      <motion.section 
+        style={styles.section} 
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        variants={sectionVariants}
+      >
+        <motion.div style={{ 
+          ...styles.appPromoCard, 
+          background: theme === 'dark' ? "rgba(47,176,188,0.05)" : "#D6FFF9",
+          borderColor: theme === 'dark' ? p.border : "#A1E8DC"
+        }} variants={itemVariants}>
+          <div style={styles.appPromoText}>
+            <h2 style={{ ...styles.appPromoTitle, color: p.text }}>Services at your fingertips.</h2>
+            <p style={{ ...styles.appPromoSub, color: p.textMuted }}>Download the Servify app for faster bookings and real-time provider tracking.</p>
+            <div style={styles.appBtns}>
+              <div style={{ ...styles.appBtn, background: theme === 'dark' ? "rgba(255,255,255,0.05)" : "#FFFFFF", borderColor: p.accent, color: p.text }}>App Store</div>
+              <div style={{ ...styles.appBtn, background: theme === 'dark' ? "rgba(255,255,255,0.05)" : "#FFFFFF", borderColor: p.accent, color: p.text }}>Google Play</div>
+            </div>
+          </div>
+          <div style={styles.appPromoPhone}>
+            <div style={{ ...styles.phoneMockup, borderColor: p.text, background: theme === 'dark' ? "#000" : "#fff" }}>
+               <div style={{ ...styles.phoneInner, background: p.border }} />
+            </div>
+          </div>
+        </motion.div>
+      </motion.section>
+
+      {/* ── TESTIMONIALS ── */}
+      <motion.section 
+        style={styles.section} 
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        variants={sectionVariants}
+      >
+        <div style={styles.testimonialContainer}>
+          {TESTIMONIALS.map((t) => (
+            <motion.div key={t.id} style={{ ...styles.testimonialCard, background: p.cardBg, borderLeftColor: p.primary }} variants={itemVariants}>
+              <p style={{ ...styles.testimonialText, color: p.text }}>"{t.text}"</p>
+              <div style={{ ...styles.testimonialAuthor, color: p.text }}>— {t.author}, <span style={{opacity: 0.5}}>{t.role}</span></div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+
+      {/* ── RECENT ACTIVITY ── */}
+      <motion.section 
+        style={styles.section} 
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        variants={sectionVariants}
+      >
+        <motion.div style={{ ...styles.sectionHeader, borderBottomColor: p.border }} variants={itemVariants}>
+          <h2 style={{ ...styles.sectionTitle, color: p.text }}>Recent activity</h2>
+        </motion.div>
+        <div style={styles.bookingList}>
+          {bookings.map((b) => {
+            const s = getStatusStyle(b.status, theme);
+            return (
+              <motion.a key={b.id} href="/client/my-bookings" style={{ ...styles.bookingRow, background: p.cardBg, borderColor: p.border }} variants={itemVariants} whileHover={{ background: theme === 'dark' ? "rgba(47,176,188,0.05)" : "rgba(47,176,188,0.03)" }}>
+                <div style={styles.bookingLeft}><span style={{ ...styles.bookingRef, color: p.textMuted }}>{b.id}</span><span style={{ color: p.text }}>{b.service}</span></div>
+                <div style={styles.bookingRight}>
+                  <span style={{ ...styles.bookingDate, color: p.textMuted }}>{b.date}</span>
+                  <span style={{ ...styles.statusBadge, color: s.color, background: s.bg }}>{b.status}</span>
+                </div>
+              </motion.a>
+            );
+          })}
+        </div>
+      </motion.section>
+
+      {/* ── FAQ ── */}
+      <motion.section 
+        style={styles.section} 
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        variants={sectionVariants}
+      >
+        <motion.div style={{ ...styles.sectionHeader, borderBottomColor: p.border }} variants={itemVariants}>
+          <h2 style={{ ...styles.sectionTitle, color: p.text }}>Common questions</h2>
+        </motion.div>
+        <motion.div style={styles.faqList} variants={itemVariants}>
+          {FAQS.map((faq, i) => <AccordionItem key={i} faq={faq} theme={theme} />)}
+        </motion.div>
+      </motion.section>
+
+      {/* ── NEWSLETTER ── */}
+      <motion.section 
+        style={styles.section} 
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        variants={sectionVariants}
+      >
+        <motion.div style={{ ...styles.newsletterCard, background: p.cardBg, borderColor: p.border }} variants={itemVariants}>
+          <h3 style={{ ...styles.newsletterTitle, color: p.text }}>Stay updated</h3>
+          <p style={{ ...styles.newsletterSub, color: p.textMuted }}>Get the latest home care tips and exclusive professional discounts.</p>
+          <div style={styles.newsletterForm}>
+            <input style={{ ...styles.newsletterInput, background: theme === 'dark' ? "rgba(255,255,255,0.03)" : p.bg, borderColor: p.border, color: p.text }} placeholder="your@email.com" />
+            <button style={{ ...styles.newsletterBtn, background: p.primary }}>Join</button>
+          </div>
+        </motion.div>
+      </motion.section>
+
+      {/* ── CTA ── */}
+      <motion.section 
+        style={styles.ctaSection} 
+        initial="hidden"
+        whileInView="visible"
+        viewport={viewportConfig}
+        variants={sectionVariants}
+      >
+        <motion.div style={{ 
+          ...styles.ctaContent, 
+          background: theme === 'dark' ? "linear-gradient(to bottom, rgba(47,176,188,0.08), transparent)" : "linear-gradient(to bottom, #D6FFF9, #F8FBFB)",
+          borderColor: theme === 'dark' ? "rgba(47,176,188,0.2)" : p.accent
+        }} variants={itemVariants}>
+          <h2 style={{ ...styles.ctaTitle, color: p.text }}>Ready to get started?</h2>
+          <p style={{ ...styles.ctaSub, color: p.textMuted }}>Join thousands of homeowners who trust Servify for their daily needs.</p>
+          <a href="/client/browse" style={{ ...styles.ctaBtn, background: p.primary, color: "#fff" }}>Explore Services</a>
+        </motion.div>
+      </motion.section>
+
+      {/* ── FOOTER ── */}
+      <footer style={{ ...styles.footer, background: theme === 'dark' ? "#0a0a0a" : p.cardBg, borderTopColor: p.border }}>
+        <div style={styles.footerGrid}>
+          <div style={styles.footerBrandCol}>
+             <div style={styles.footerLogo}>
+                <span style={{ ...styles.logoMark, color: p.primary }}>◈</span>
+                <span style={{ ...styles.footerBrandName, color: p.text }}>Servify</span>
+             </div>
+             <p style={{ ...styles.footerTagline, color: p.textMuted }}>The premium platform for home services.</p>
+          </div>
+          <div style={styles.footerLinksCol}>
+            <h4 style={{ ...styles.footerColTitle, color: p.primary }}>Platform</h4>
+            <a href="#" style={{ ...styles.footerLink, color: p.textMuted }}>Browse Services</a>
+            <a href="#" style={{ ...styles.footerLink, color: p.textMuted }}>For Providers</a>
+            <a href="#" style={{ ...styles.footerLink, color: p.textMuted }}>Cities</a>
+          </div>
+          <div style={styles.footerLinksCol}>
+            <h4 style={{ ...styles.footerColTitle, color: p.primary }}>Company</h4>
+            <a href="#" style={{ ...styles.footerLink, color: p.textMuted }}>About Us</a>
+            <a href="#" style={{ ...styles.footerLink, color: p.textMuted }}>Careers</a>
+            <a href="#" style={{ ...styles.footerLink, color: p.textMuted }}>Contact</a>
+          </div>
+          <div style={styles.footerLinksCol}>
+            <h4 style={{ ...styles.footerColTitle, color: p.primary }}>Support</h4>
+            <a href="#" style={{ ...styles.footerLink, color: p.textMuted }}>Help Center</a>
+            <a href="#" style={{ ...styles.footerLink, color: p.textMuted }}>Safety</a>
+            <a href="#" style={{ ...styles.footerLink, color: p.textMuted }}>Terms of Service</a>
+          </div>
+        </div>
+        <div style={{ ...styles.footerBottom, borderTopColor: p.border }}>
+          <span style={{ ...styles.footerText, color: p.textMuted }}>© 2026 Servify Inc. All rights reserved.</span>
+          <div style={{ ...styles.footerSocials, color: p.textMuted }}>
+            <span>Twitter</span>
+            <span>Instagram</span>
+            <span>LinkedIn</span>
+          </div>
+        </div>
+      </footer>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { transition: background 0.3s ease; }
+        a { text-decoration: none; color: inherit; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #E0E7E7; border-radius: 10px; }
+        @keyframes pulse {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.4); opacity: 0.5; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+const styles = {
+  root: { minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", position: "relative", transition: "background 0.3s ease, color 0.3s ease" },
+  bgGrid: { position: "absolute", inset: 0, backgroundSize: "40px 40px", zIndex: 0, pointerEvents: "none" },
+  glow: { position: "fixed", width: 600, height: 600, borderRadius: "50%", pointerEvents: "none", zIndex: 0, transition: "left 0.8s ease, top 0.8s ease" },
+
+  nav: { position: "sticky", top: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 48px", height: 64, borderBottom: "1px solid", backdropFilter: "blur(12px)", transition: "all 0.3s ease" },
+  navLogo: { display: "flex", alignItems: "center", gap: 10 },
+  logoMark: { fontSize: 20 },
+  logoText: { fontSize: 17, fontWeight: 500, letterSpacing: "-0.3px" },
+  navLinks: { display: "flex", gap: 32 },
+  navLink: { fontSize: 14, fontWeight: 500, transition: "color 0.2s" },
+  navLinkBtn: { background: "none", border: "none", fontSize: 14, fontWeight: 500, transition: "color 0.2s", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, position: "relative" },
+  navNotifDot: { width: 6, height: 6, borderRadius: "50%", position: "absolute", top: -2, right: -8 },
+  navRight: { display: "flex", alignItems: "center", gap: 16 },
+
+  notifDropdown: { position: "absolute", top: "calc(100% + 12px)", right: -100, width: 320, borderRadius: 16, border: "1px solid", padding: "16px 0", zIndex: 1000, boxShadow: "0 20px 40px rgba(0,0,0,0.2)" },
+  notifDropHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", marginBottom: 8 },
+  notifDropList: { maxHeight: 300, overflowY: "auto" },
+  notifDropItem: { padding: "12px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.2s", cursor: "pointer" },
+  notifDropTitleRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline" },
+  themeBtn: { width: 34, height: 34, borderRadius: "50%", border: "1px solid", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, transition: "all 0.3s ease" },
+  avatarBtn: { width: 34, height: 34, borderRadius: "50%", border: "1px solid", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500 },
+
+  hero: { position: "relative", zIndex: 1, maxWidth: 860, margin: "0 auto", padding: "140px 48px 100px", textAlign: "center" },
+  statusPill: { display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", border: "1px solid", borderRadius: 999, fontSize: 13, marginBottom: 40 },
+  statusDot: { width: 7, height: 7, borderRadius: "50%", animation: "pulse 2s infinite" },
+  headline: { fontFamily: "'Instrument Serif', serif", fontSize: "clamp(52px, 8vw, 92px)", lineHeight: 1.0, letterSpacing: "-2px", marginBottom: 28 },
+  headlineAccent: { display: "inline-block", transition: "opacity 0.3s ease, transform 0.3s ease" },
+  subline: { fontSize: 18, lineHeight: 1.7, marginBottom: 48, maxWidth: 600, margin: "0 auto 48px" },
+  searchRow: { display: "flex", maxWidth: 640, margin: "0 auto", border: "1px solid", borderRadius: 14, overflow: "hidden", boxShadow: "0 10px 30px rgba(0,0,0,0.03)" },
+  searchWrap: { flex: 1, display: "flex", alignItems: "center", padding: "0 22px", gap: 12 },
+  searchIcon: { fontSize: 20 },
+  searchInput: { flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 16, padding: "20px 0", fontFamily: "'DM Sans', sans-serif" },
+  searchBtn: { padding: "20px 32px", color: "#FFFFFF", border: "none", fontSize: 15, fontWeight: 500, cursor: "pointer" },
+
+  statsSection: { display: "flex", justifyContent: "center", gap: 60, padding: "60px 48px", borderTop: "1px solid", borderBottom: "1px solid", maxWidth: 1040, margin: "0 auto" },
+  statItem: { textAlign: "center" },
+  statValue: { fontSize: 32, fontFamily: "'Instrument Serif', serif" },
+  statLabel: { fontSize: 13, marginTop: 4 },
+
+  section: { position: "relative", zIndex: 1, maxWidth: 1040, margin: "0 auto", padding: "80px 48px" },
+  sectionHeader: { display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 32, borderBottom: "1px solid", paddingBottom: 16 },
+  sectionTitle: { fontFamily: "'Instrument Serif', serif", fontSize: 32, fontWeight: 400 },
+  sectionLink: { fontSize: 13, fontWeight: 500 },
+
+  stepsGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 24 },
+  stepCard: { padding: "32px", border: "1px solid", borderRadius: 16, transition: "all 0.3s" },
+  stepNumber: { fontSize: 12, marginBottom: 16, fontWeight: 600, opacity: 0.8 },
+  stepTitle: { fontSize: 18, fontWeight: 500, marginBottom: 10 },
+  stepDesc: { fontSize: 14, lineHeight: 1.6 },
+
+  categoryGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 },
+  categoryCard: { display: "block", padding: "28px", border: "1px solid", borderRadius: 16, transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)" },
+  catIcon: { fontSize: 24, marginBottom: 16 },
+  catName: { fontSize: 17, fontWeight: 500, marginBottom: 6 },
+  catDesc: { fontSize: 14, marginBottom: 16 },
+  catCount: { fontSize: 12, fontWeight: 500 },
+
+  cityGrid: { display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 },
+  cityItem: { fontSize: 14, cursor: "pointer", transition: "color 0.2s" },
+
+  providerGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 },
+  providerCard: { padding: "24px", display: "flex", gap: 16, border: "1px solid", borderRadius: 16, transition: "all 0.3s" },
+  providerImg: { width: 56, height: 56, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 600 },
+  providerName: { fontSize: 16, fontWeight: 500 },
+  providerService: { fontSize: 13, margin: "4px 0 8px" },
+  providerRating: { fontSize: 12, fontWeight: 600 },
+
+  appPromoCard: { display: "flex", alignItems: "center", padding: "60px", border: "1px solid", borderRadius: 24, gap: 40 },
+  appPromoText: { flex: 1 },
+  appPromoTitle: { fontSize: 32, fontFamily: "'Instrument Serif', serif", marginBottom: 16 },
+  appPromoSub: { marginBottom: 32, lineHeight: 1.6 },
+  appBtns: { display: "flex", gap: 12 },
+  appBtn: { padding: "12px 24px", border: "1px solid", borderRadius: 8, fontSize: 13, fontWeight: 500, cursor: "pointer" },
+  appPromoPhone: { flex: 1, display: "flex", justifyContent: "center" },
+  phoneMockup: { width: 160, height: 320, border: "6px solid", borderRadius: 24, position: "relative" },
+  phoneInner: { width: "80%", height: 4, borderRadius: 2, margin: "12px auto" },
+
+  testimonialContainer: { display: "flex", gap: 24, padding: "20px 0" },
+  testimonialCard: { flex: 1, padding: "40px", borderLeft: "3px solid", borderRadius: "0 16px 16px 0", boxShadow: "0 4px 20px rgba(0,0,0,0.02)" },
+  testimonialText: { fontSize: 18, fontStyle: "italic", marginBottom: 20, lineHeight: 1.7 },
+  testimonialAuthor: { fontSize: 15, fontWeight: 600 },
+
+  bookingList: { display: "flex", flexDirection: "column", gap: 8 },
+  bookingRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px", border: "1px solid", borderRadius: 12, transition: "all 0.3s" },
+  bookingLeft: { display: "flex", alignItems: "center", gap: 32 },
+  bookingRef: { fontSize: 12, fontFamily: "monospace" },
+  bookingRight: { display: "flex", alignItems: "center", gap: 20 },
+  statusBadge: { fontSize: 11, fontWeight: 600, padding: "4px 12px", borderRadius: 999, textTransform: "uppercase" },
+
+  faqList: { display: "flex", flexDirection: "column", gap: 12 },
+  faqItem: { borderBottom: "1px solid", padding: "10px 0" },
+  faqHeader: { display: "flex", justifyContent: "space-between", padding: "20px 0", cursor: "pointer" },
+  faqQuestion: { fontSize: 17, fontWeight: 500 },
+  faqAnswer: { padding: "0 0 24px", lineHeight: 1.7, fontSize: 15 },
+  faqToggle: { fontSize: 20, transition: "transform 0.3s" },
+
+  newsletterCard: { padding: "60px", border: "1px solid", borderRadius: 24, textAlign: "center" },
+  newsletterTitle: { fontSize: 28, fontFamily: "'Instrument Serif', serif", marginBottom: 12 },
+  newsletterSub: { marginBottom: 32 },
+  newsletterForm: { display: "flex", maxWidth: 400, margin: "0 auto", gap: 12 },
+  newsletterInput: { flex: 1, border: "1px solid", borderRadius: 8, padding: "14px 20px", outline: "none" },
+  newsletterBtn: { color: "#FFFFFF", border: "none", padding: "0 24px", borderRadius: 8, fontWeight: 500, cursor: "pointer" },
+
+  ctaSection: { padding: "120px 48px", textAlign: "center" },
+  ctaContent: { maxWidth: 840, margin: "0 auto", padding: "80px 40px", borderRadius: 32, border: "1px solid" },
+  ctaTitle: { fontFamily: "'Instrument Serif', serif", fontSize: 48, marginBottom: 20 },
+  ctaSub: { fontSize: 18, marginBottom: 40 },
+  ctaBtn: { display: "inline-block", padding: "18px 48px", borderRadius: 10, fontWeight: 500 },
+
+  footer: { padding: "100px 48px 60px", borderTop: "1px solid" },
+  footerGrid: { display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", gap: 60, maxWidth: 1040, margin: "0 auto" },
+  footerLogo: { display: "flex", alignItems: "center", gap: 10, marginBottom: 20 },
+  footerBrandCol: {},
+  footerLinksCol: {},
+  footerBrandName: { fontSize: 20, fontWeight: 600 },
+  footerTagline: { fontSize: 14, lineHeight: 1.6 },
+  footerColTitle: { fontSize: 14, fontWeight: 600, marginBottom: 24, textTransform: "uppercase", letterSpacing: "1px" },
+  footerLink: { display: "block", fontSize: 14, marginBottom: 12, transition: "color 0.2s" },
+  footerBottom: { marginTop: 80, paddingTop: 32, borderTop: "1px solid", display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 1040, margin: "80px auto 0" },
+  footerText: { fontSize: 13 },
+  footerSocials: { display: "flex", gap: 24, fontSize: 13 },
+};
