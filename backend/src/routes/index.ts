@@ -1,0 +1,9 @@
+export { default as authRoutes } from './auth.routes';
+export { default as userRoutes } from './user.routes';
+export { default as serviceRoutes } from './service.routes';
+export { default as bookingRoutes } from './booking.routes';
+export { default as jobRoutes } from './job.routes';
+export { default as reviewRoutes } from './review.routes';
+export { default as transactionRoutes } from './transaction.routes';
+export { default as scheduleRoutes } from './schedule.routes';
+export { default as notificationRoutes } from './notification.routes';
