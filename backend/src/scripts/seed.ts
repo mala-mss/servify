@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { sequelize, User, Service } from '../models';
+import { User, Service } from '../models';
 import { connectDB, syncDB } from '../config';
 import { bcryptRounds } from '../config/auth.config';
 
@@ -23,7 +23,7 @@ const seedDatabase = async () => {
     // Create sample users
     const hashedPassword = await bcrypt.hash('password123', bcryptRounds);
 
-    const [client, provider, admin] = await User.bulkCreate([
+    const users = await User.bulkCreate([
       {
         name: 'Test Client',
         email: 'client@example.com',
@@ -55,13 +55,18 @@ const seedDatabase = async () => {
       },
     ]);
 
+    const provider = users.find(u => u.role === 'provider');
+    if (!provider) {
+      throw new Error('Provider not found after creation');
+    }
+
     console.log('✅ Created sample users:');
     console.log('   - Client: client@example.com / password123');
     console.log('   - Provider: provider@example.com / password123');
     console.log('   - Admin: admin@example.com / password123');
 
     // Create sample services
-    const services = await Service.bulkCreate([
+    await Service.bulkCreate([
       {
         providerId: provider.id,
         name: 'Elderly Care',

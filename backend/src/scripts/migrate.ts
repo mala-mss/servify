@@ -1,4 +1,3 @@
-import { sequelize } from '../models';
 import { connectDB, syncDB } from '../config';
 
 const runMigrations = async () => {

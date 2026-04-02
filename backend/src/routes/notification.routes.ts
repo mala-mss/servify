@@ -12,14 +12,15 @@ import {
 import { authenticate, authorize } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { body } from 'express-validator';
+import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 
-router.get('/', authenticate, getAllNotifications);
-router.get('/user/:userId?', authenticate, getUserNotifications);
-router.get('/unread/:userId?', authenticate, getUnreadCount);
+router.get('/', authenticate, asyncHandler(getAllNotifications));
+router.get('/user/:userId?', authenticate, asyncHandler(getUserNotifications));
+router.get('/unread/:userId?', authenticate, asyncHandler(getUnreadCount));
 
-router.get('/:id', authenticate, getNotificationById);
+router.get('/:id', authenticate, asyncHandler(getNotificationById));
 
 router.post(
   '/',
@@ -31,12 +32,12 @@ router.post(
     body('title').notEmpty().withMessage('Title is required'),
     body('message').notEmpty().withMessage('Message is required'),
   ]),
-  createNotification
+  asyncHandler(createNotification)
 );
 
-router.put('/:id/mark-as-read', authenticate, markAsRead);
-router.put('/:userId/mark-all-as-read', authenticate, markAllAsRead);
+router.put('/:id/mark-as-read', authenticate, asyncHandler(markAsRead));
+router.put('/:userId/mark-all-as-read', authenticate, asyncHandler(markAllAsRead));
 
-router.delete('/:id', authenticate, deleteNotification);
+router.delete('/:id', authenticate, asyncHandler(deleteNotification));
 
 export default router;

@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { Prisma } from '@prisma/client';
+import { ValidationError, UniqueConstraintError, ForeignKeyConstraintError, DatabaseError } from 'sequelize';
 
 export class AppError extends Error {
   statusCode: number;
@@ -14,10 +14,10 @@ export class AppError extends Error {
 }
 
 export const errorHandler = (
-  err: Error | AppError | Prisma.PrismaClientKnownRequestError,
-  req: Request,
+  err: Error | AppError | DatabaseError,
+  _req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ): void => {
   console.error('Error:', err);
 
@@ -28,24 +28,28 @@ export const errorHandler = (
     return;
   }
 
-  // Prisma error handling
-  if ('code' in err) {
-    const prismaError = err as Prisma.PrismaClientKnownRequestError;
+  // Sequelize error handling
+  if (err instanceof ValidationError) {
+    res.status(400).json({
+      error: 'Validation error',
+      details: err.errors.map(e => ({ field: e.path, message: e.message })),
+    });
+    return;
+  }
 
-    switch (prismaError.code) {
-      case 'P2002':
-        res.status(409).json({ error: 'A record with this value already exists' });
-        return;
-      case 'P2025':
-        res.status(404).json({ error: 'Record not found' });
-        return;
-      case 'P2003':
-        res.status(400).json({ error: 'Related record not found' });
-        return;
-      default:
-        res.status(400).json({ error: 'Database error' });
-        return;
-    }
+  if (err instanceof UniqueConstraintError) {
+    res.status(409).json({ error: 'A record with this value already exists' });
+    return;
+  }
+
+  if (err instanceof ForeignKeyConstraintError) {
+    res.status(400).json({ error: 'Related record not found' });
+    return;
+  }
+
+  if (err instanceof DatabaseError) {
+    res.status(400).json({ error: 'Database error' });
+    return;
   }
 
   // Default error

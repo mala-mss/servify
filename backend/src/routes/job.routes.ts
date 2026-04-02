@@ -11,14 +11,15 @@ import {
 import { authenticate, authorize } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { body } from 'express-validator';
+import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 
-router.get('/', authenticate, getAllJobs);
-router.get('/provider/:providerId?', authenticate, getProviderJobs);
-router.get('/client/:clientId?', authenticate, getClientJobs);
+router.get('/', authenticate, asyncHandler(getAllJobs));
+router.get('/provider/:providerId?', authenticate, asyncHandler(getProviderJobs));
+router.get('/client/:clientId?', authenticate, asyncHandler(getClientJobs));
 
-router.get('/:id', authenticate, getJobById);
+router.get('/:id', authenticate, asyncHandler(getJobById));
 
 router.post(
   '/',
@@ -29,7 +30,7 @@ router.post(
     body('endTime').notEmpty().withMessage('End time is required'),
     body('address').notEmpty().withMessage('Address is required'),
   ]),
-  createJob
+  asyncHandler(createJob)
 );
 
 router.put(
@@ -38,9 +39,9 @@ router.put(
   validate([
     body('status').optional().isIn(['pending', 'confirmed', 'in_progress', 'completed', 'declined', 'cancelled']).withMessage('Invalid status'),
   ]),
-  updateJob
+  asyncHandler(updateJob)
 );
 
-router.delete('/:id', authenticate, authorize('admin'), deleteJob);
+router.delete('/:id', authenticate, authorize('admin'), asyncHandler(deleteJob));
 
 export default router;

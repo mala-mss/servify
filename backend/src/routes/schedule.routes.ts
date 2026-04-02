@@ -11,14 +11,15 @@ import {
 import { authenticate } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { body } from 'express-validator';
+import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 
-router.get('/', getAllSchedules);
-router.get('/provider/:providerId?', getProviderSchedule);
-router.get('/check-availability', checkAvailability);
+router.get('/', asyncHandler(getAllSchedules));
+router.get('/provider/:providerId?', asyncHandler(getProviderSchedule));
+router.get('/check-availability', asyncHandler(checkAvailability));
 
-router.get('/:id', getScheduleById);
+router.get('/:id', asyncHandler(getScheduleById));
 
 router.post(
   '/',
@@ -28,7 +29,7 @@ router.post(
     body('startTime').notEmpty().withMessage('Start time is required'),
     body('endTime').notEmpty().withMessage('End time is required'),
   ]),
-  createSchedule
+  asyncHandler(createSchedule)
 );
 
 router.put(
@@ -37,9 +38,9 @@ router.put(
   validate([
     body('dayOfWeek').optional().isInt({ min: 0, max: 6 }).withMessage('Day of week must be between 0 and 6'),
   ]),
-  updateSchedule
+  asyncHandler(updateSchedule)
 );
 
-router.delete('/:id', authenticate, deleteSchedule);
+router.delete('/:id', authenticate, asyncHandler(deleteSchedule));
 
 export default router;

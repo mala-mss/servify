@@ -10,13 +10,14 @@ import {
 import { authenticate, authorize } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { body } from 'express-validator';
+import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 
-router.get('/', getAllServices);
-router.get('/provider/:providerId', getProviderServices);
+router.get('/', asyncHandler(getAllServices));
+router.get('/provider/:providerId', asyncHandler(getProviderServices));
 
-router.get('/:id', getServiceById);
+router.get('/:id', asyncHandler(getServiceById));
 
 router.post(
   '/',
@@ -29,7 +30,7 @@ router.post(
     body('unit').notEmpty().withMessage('Unit is required'),
     body('category').notEmpty().withMessage('Category is required'),
   ]),
-  createService
+  asyncHandler(createService)
 );
 
 router.put(
@@ -40,9 +41,9 @@ router.put(
     body('description').optional().notEmpty().withMessage('Description cannot be empty'),
     body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   ]),
-  updateService
+  asyncHandler(updateService)
 );
 
-router.delete('/:id', authenticate, deleteService);
+router.delete('/:id', authenticate, asyncHandler(deleteService));
 
 export default router;

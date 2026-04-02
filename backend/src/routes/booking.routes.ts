@@ -11,14 +11,15 @@ import {
 import { authenticate } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { body } from 'express-validator';
+import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 
-router.get('/', authenticate, getAllBookings);
-router.get('/client/:clientId', getClientBookings);
-router.get('/provider/:providerId', getProviderBookings);
+router.get('/', authenticate, asyncHandler(getAllBookings));
+router.get('/client/:clientId', asyncHandler(getClientBookings));
+router.get('/provider/:providerId', asyncHandler(getProviderBookings));
 
-router.get('/:id', authenticate, getBookingById);
+router.get('/:id', authenticate, asyncHandler(getBookingById));
 
 router.post(
   '/',
@@ -29,7 +30,7 @@ router.post(
     body('time').notEmpty().withMessage('Time is required'),
     body('address').notEmpty().withMessage('Address is required'),
   ]),
-  createBooking
+  asyncHandler(createBooking)
 );
 
 router.put(
@@ -38,9 +39,9 @@ router.put(
   validate([
     body('status').optional().isIn(['pending', 'confirmed', 'cancelled', 'completed']).withMessage('Invalid status'),
   ]),
-  updateBooking
+  asyncHandler(updateBooking)
 );
 
-router.delete('/:id', authenticate, deleteBooking);
+router.delete('/:id', authenticate, asyncHandler(deleteBooking));
 
 export default router;
