@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { BOOKINGS, INITIAL_NOTIFICATIONS } from "../../utils/mockData";
+import axiosInstance from "../../api/axiosInstance";
+import ClientNavbar from "../../components/layout/ClientNavbar";
 
 // Mock hook — replace with: import { useAuth } from '@/context/AuthContext'
 const useAuth = () => ({ user: { name: "malak" } });
@@ -32,9 +34,46 @@ const FAQS = [
 ];
 
 const FEATURED_PROVIDERS = [
-  { id: 1, name: "Alex Johnson", service: "Master Plumber", rating: 4.9, reviews: 124, img: "A" },
-  { id: 2, name: "Maria Garcia", service: "Cleaning Expert", rating: 4.8, reviews: 89, img: "M" },
-  { id: 3, name: "David Chen", service: "Electrician", rating: 5.0, reviews: 56, img: "D" },
+  { 
+    id: 1, name: "Alex Johnson", service: "Plumbing", rating: 4.9, reviews: 124, img: "A", 
+    location: "Algiers", price: 45, experience: "8 years", bio: "Expert in home plumbing repairs and installations.",
+    availability: "Available Now", tags: ["Emergency", "Licensed"]
+  },
+  { 
+    id: 2, name: "Maria Garcia", service: "Cleaning", rating: 4.8, reviews: 89, img: "M", 
+    location: "Oran", price: 30, experience: "5 years", bio: "Eco-friendly deep cleaning specialist for modern homes.",
+    availability: "Available Tomorrow", tags: ["Eco-friendly", "Detail-oriented"]
+  },
+  { 
+    id: 3, name: "David Chen", service: "Electrical", rating: 5.0, reviews: 56, img: "D", 
+    location: "Constantine", price: 55, experience: "12 years", bio: "Master electrician specializing in smart home wiring.",
+    availability: "Available Now", tags: ["Expert", "Certified"]
+  },
+  { 
+    id: 4, name: "Sarah Miller", service: "Childcare", rating: 4.9, reviews: 210, img: "S", 
+    location: "Algiers", price: 25, experience: "6 years", bio: "Patient and creative childcare provider with CPR certification.",
+    availability: "Available Now", tags: ["CPR Certified", "Multilingual"]
+  },
+  { 
+    id: 5, name: "Robert Wilson", service: "Gardening", rating: 4.7, reviews: 45, img: "R", 
+    location: "Sétif", price: 35, experience: "4 years", bio: "Passionate about landscaping and sustainable garden design.",
+    availability: "Available Today", tags: ["Landscaping", "Sustainable"]
+  },
+  { 
+    id: 6, name: "Elena Petrova", service: "Tutoring", rating: 5.0, reviews: 78, img: "E", 
+    location: "Mila", price: 40, experience: "7 years", bio: "Experienced mathematics tutor focusing on high school students.",
+    availability: "Available Now", tags: ["Math Expert", "Flexible Schedule"]
+  },
+  { 
+    id: 7, name: "Karim Brahimi", service: "Plumbing", rating: 4.6, reviews: 32, img: "K", 
+    location: "Ferdjioua", price: 40, experience: "10 years", bio: "Fast and reliable service for all types of plumbing issues.",
+    availability: "Available Now", tags: ["Reliable", "Fast"]
+  },
+  { 
+    id: 8, name: "Lila Mansouri", service: "Cleaning", rating: 4.9, reviews: 156, img: "L", 
+    location: "Algiers", price: 35, experience: "6 years", bio: "Professional cleaning with attention to every corner.",
+    availability: "Available Today", tags: ["Professional", "Thorough"]
+  },
 ];
 
 const TESTIMONIALS = [
@@ -144,9 +183,89 @@ export default function Home() {
   const [showNotif, setShowNotif] = useState(false);
   const [bookings, setBookings] = useState(BOOKINGS);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [filteredProviders, setFilteredProviders] = useState(FEATURED_PROVIDERS);
   const notifRef = useRef(null);
 
   const p = PALETTES[theme];
+
+  // Fetch initial providers
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        const response = await axiosInstance.get("/users/providers/search");
+        if (response.data.success) {
+          const mapped = response.data.providers.map(p => ({
+            id: p.provider_id,
+            name: p.name,
+            service: p.services?.[0] || "General Provider",
+            rating: p.rating || 0,
+            reviews: p.review_count || 0,
+            img: p.name[0],
+            location: p.location || "Unknown",
+            price: p.price_per_hour || 0,
+            experience: `${p.years_of_exp || 0} years`,
+            bio: p.bio || "No bio available.",
+            availability: "Available Now",
+            tags: p.categories || []
+          }));
+          setFilteredProviders(mapped);
+        }
+      } catch (error) {
+        console.error("Initial fetch failed:", error);
+      }
+    };
+    fetchProviders();
+  }, []);
+
+  const handleSearch = async (query, results) => {
+    setSearch(query);
+    
+    // Parse the query for filters
+    const params = {};
+    const parts = query.split(" ");
+    parts.forEach(part => {
+      if (part.startsWith("location:")) params.location = part.split(":")[1];
+      if (part.startsWith("service:")) params.service = part.split(":")[1];
+      if (part.startsWith("category:")) params.category = part.split(":")[1];
+    });
+
+    // If no specific filters, use general search if query exists
+    const isGeneralSearch = !params.location && !params.service && !params.category && query.trim() !== "";
+
+    try {
+      const response = await axiosInstance.get("/users/providers/search", {
+        params: isGeneralSearch ? { service: query } : params
+      });
+      
+      if (response.data.success) {
+        // Map backend data to frontend card structure
+        const mapped = response.data.providers.map(p => ({
+          id: p.provider_id,
+          name: p.name,
+          service: p.services?.[0] || "General Provider",
+          rating: p.rating || 0,
+          reviews: p.review_count || 0,
+          img: p.name[0],
+          location: p.location || "Unknown",
+          price: p.price_per_hour || 0,
+          experience: `${p.years_of_exp || 0} years`,
+          bio: p.bio || "No bio available.",
+          availability: "Available Now", // Mocked for now
+          tags: p.categories || []
+        }));
+        setFilteredProviders(mapped);
+        
+        // Scroll to results if searching
+        if (query.trim() !== "") {
+          document.getElementById('caregivers-section')?.scrollIntoView({ behavior: 'smooth' });
+        }
+      }
+    } catch (error) {
+      console.error("Search failed:", error);
+      // Fallback to local filtering if API fails
+      setFilteredProviders(results.length > 0 ? results : FEATURED_PROVIDERS);
+    }
+  };
 
   // Update dynamic notifications based on booking status
   useEffect(() => {
@@ -228,67 +347,6 @@ export default function Home() {
         background: `radial-gradient(circle, ${p.glow} 0%, transparent 70%)`
       }} />
 
-      {/* ── NAV ── */}
-      <nav style={{ ...styles.nav, background: p.navBg, borderBottomColor: p.border }}>
-        <a href="/client/home" style={{ ...styles.navLogo, textDecoration: 'none' }}>
-          <span style={{ ...styles.logoMark, color: p.primary }}>◈</span>
-          <span style={{ ...styles.logoText, color: p.text }}>Servify</span>
-        </a>
-        <div style={styles.navLinks}>
-          <a href="/client/browse" style={{ ...styles.navLink, color: p.textMuted }}>Browse</a>
-          <a href="/client/my-bookings" style={{ ...styles.navLink, color: p.textMuted }}>My bookings</a>
-          
-          <div style={{ position: "relative" }} ref={notifRef}>
-            <button 
-              onClick={() => setShowNotif(!showNotif)} 
-              style={{ ...styles.navLinkBtn, color: p.textMuted }}
-            >
-              Notifications
-              {notifications.some(n => n.unread) && <span style={{ ...styles.navNotifDot, background: p.primary }} />}
-            </button>
-            
-            <AnimatePresence>
-              {showNotif && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
-                  style={{ ...styles.notifDropdown, background: p.cardBg, borderColor: p.border, backdropFilter: "blur(20px)" }}
-                >
-                  <div style={styles.notifDropHeader}>
-                    <span style={{ fontSize: 14, fontWeight: 600 }}>Notifications</span>
-                    <a href="/client/notifications" style={{ fontSize: 11, color: p.primary }}>View all</a>
-                  </div>
-                  <div style={styles.notifDropList}>
-                    {notifications.length === 0 && (
-                      <div style={{ padding: 20, textAlign: 'center', fontSize: 12, color: p.textMuted }}>No new notifications</div>
-                    )}
-                    {notifications.map(n => (
-                      <div key={n.id} style={{ ...styles.notifDropItem, borderBottomColor: p.border }}>
-                        <div style={styles.notifDropTitleRow}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: n.type === 'payment' ? '#F59E0B' : p.text }}>{n.title}</span>
-                          <span style={{ fontSize: 10, opacity: 0.5 }}>{n.time}</span>
-                        </div>
-                        <div style={{ fontSize: 12, opacity: 0.6, marginTop: 4 }}>{n.desc}</div>
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-        <div style={styles.navRight}>
-          <button onClick={toggleTheme} style={{ ...styles.themeBtn, color: p.text, background: p.cardBg, borderColor: p.border }}>
-            {theme === "dark" ? "☼" : "☾"}
-          </button>
-          <a href="/client/profile" style={{ ...styles.avatarBtn, background: theme === 'dark' ? "rgba(47,176,188,0.15)" : "#D6FFF9", borderColor: p.accent, color: p.primary }}>
-            {user?.name?.[0]?.toUpperCase() ?? "U"}
-          </a>
-        </div>
-      </nav>
-
       {/* ── HERO ── */}
       <motion.section 
         style={styles.hero}
@@ -313,19 +371,6 @@ export default function Home() {
         <motion.p style={{ ...styles.subline, color: p.textMuted }} variants={itemVariants}>
           Find trusted professionals in your area. Describe what you need, pick a time, and we handle the rest.
         </motion.p>
-
-        <motion.form style={{ ...styles.searchRow, background: p.cardBg, borderColor: p.border }} variants={itemVariants}>
-          <div style={styles.searchWrap}>
-            <span style={{ ...styles.searchIcon, color: p.border }}>⌕</span>
-            <input
-              style={{ ...styles.searchInput, color: p.text }}
-              placeholder="What service do you need?"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <button type="submit" style={{ ...styles.searchBtn, background: p.primary }}>Find a provider</button>
-        </motion.form>
       </motion.section>
 
       {/* ── STATS ── */}
@@ -420,30 +465,93 @@ export default function Home() {
         </motion.div>
       </motion.section>
 
-      {/* ── FEATURED PROVIDERS ── */}
+      {/* ── AVAILABLE CAREGIVERS ── */}
       <motion.section 
         style={styles.section} 
         initial="hidden"
         whileInView="visible"
         viewport={viewportConfig}
         variants={sectionVariants}
+        id="caregivers-section"
       >
         <motion.div style={{ ...styles.sectionHeader, borderBottomColor: p.border }} variants={itemVariants}>
-          <h2 style={{ ...styles.sectionTitle, color: p.text }}>Top rated pros</h2>
-          <a href="/client/browse" style={{ ...styles.sectionLink, color: p.primary }}>See all →</a>
+          <h2 style={{ ...styles.sectionTitle, color: p.text }}>
+            {search ? `Results for "${search}"` : "Available Caregivers"}
+          </h2>
+          <span style={{ fontSize: 13, color: p.textMuted }}>{filteredProviders.length} experts found</span>
         </motion.div>
-        <div style={styles.providerGrid}>
-          {FEATURED_PROVIDERS.map((p_item) => (
-            <motion.div key={p_item.id} style={{ ...styles.providerCard, background: p.cardBg, borderColor: p.border }} variants={itemVariants} whileHover={{ y: -5, borderColor: p.primary }}>
-              <div style={{ ...styles.providerImg, background: theme === 'dark' ? "rgba(255,255,255,0.05)" : "#D6FFF9", color: p.primary }}>{p_item.img}</div>
-              <div style={styles.providerInfo}>
-                <div style={{ ...styles.providerName, color: p.text }}>{p_item.name}</div>
-                <div style={{ ...styles.providerService, color: p.textMuted }}>{p_item.service}</div>
-                <div style={{ ...styles.providerRating, color: p.primary }}>★ {p_item.rating} ({p_item.reviews} reviews)</div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        
+        {filteredProviders.length > 0 ? (
+          <div style={styles.providerGrid}>
+            {filteredProviders.map((p_item) => (
+              <motion.div 
+                key={p_item.id} 
+                style={{ ...styles.providerCard, background: p.cardBg, borderColor: p.border }} 
+                variants={itemVariants} 
+                whileHover={{ y: -8, borderColor: p.primary, boxShadow: `0 12px 30px ${theme === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.05)'}` }}
+              >
+                <div style={styles.providerCardTop}>
+                  <div style={{ ...styles.providerImg, background: theme === 'dark' ? "rgba(47,176,188,0.15)" : "#D6FFF9", color: p.primary }}>
+                    {p_item.img}
+                  </div>
+                  <div style={styles.providerBadgeRow}>
+                    <span style={{ ...styles.availBadge, background: p_item.availability.includes("Now") ? "rgba(107,200,178,0.15)" : "rgba(245,158,11,0.1)", color: p_item.availability.includes("Now") ? "#6BC8B2" : "#F59E0B" }}>
+                      ● {p_item.availability}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={styles.providerInfo}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <div style={{ ...styles.providerName, color: p.text }}>{p_item.name}</div>
+                      <div style={{ ...styles.providerService, color: p.primary }}>{p_item.service}</div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: p.text }}>${p_item.price}</div>
+                      <div style={{ fontSize: 10, color: p.textMuted }}>per hour</div>
+                    </div>
+                  </div>
+
+                  <div style={{ ...styles.providerMeta, color: p.textMuted }}>
+                    <span>★ {p_item.rating} ({p_item.reviews})</span>
+                    <span>•</span>
+                    <span>{p_item.experience} exp.</span>
+                    <span>•</span>
+                    <span>{p_item.location}</span>
+                  </div>
+
+                  <p style={{ ...styles.providerBio, color: p.textMuted }}>{p_item.bio}</p>
+
+                  <div style={styles.tagRow}>
+                    {p_item.tags.map(tag => (
+                      <span key={tag} style={{ ...styles.tag, background: theme === 'dark' ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", color: p.textMuted }}>
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+
+                  <div style={styles.providerActions}>
+                    <button style={{ ...styles.actionBtnSecondary, color: p.text, borderColor: p.border }}>Profile</button>
+                    <button style={{ ...styles.actionBtnPrimary, background: p.primary }}>Book Now</button>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <motion.div variants={itemVariants} style={{ textAlign: 'center', padding: '60px 0', color: p.textMuted }}>
+            <div style={{ fontSize: 40, marginBottom: 20 }}>☹</div>
+            <h3>No caregivers found matching your search.</h3>
+            <p>Try using different filters or search terms.</p>
+            <button 
+              onClick={() => handleSearch("", FEATURED_PROVIDERS)}
+              style={{ marginTop: 20, background: 'none', border: `1px solid ${p.primary}`, color: p.primary, padding: '10px 24px', borderRadius: 8, cursor: 'pointer' }}
+            >
+              Clear all filters
+            </button>
+          </motion.div>
+        )}
       </motion.section>
 
       {/* ── APP PROMO ── */}
@@ -690,12 +798,21 @@ const styles = {
   cityGrid: { display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 },
   cityItem: { fontSize: 14, cursor: "pointer", transition: "color 0.2s" },
 
-  providerGrid: { display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20 },
-  providerCard: { padding: "24px", display: "flex", gap: 16, border: "1px solid", borderRadius: 16, transition: "all 0.3s" },
-  providerImg: { width: 56, height: 56, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 600 },
-  providerName: { fontSize: 16, fontWeight: 500 },
-  providerService: { fontSize: 13, margin: "4px 0 8px" },
-  providerRating: { fontSize: 12, fontWeight: 600 },
+  providerGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 24 },
+  providerCard: { display: "flex", flexDirection: "column", padding: "24px", border: "1px solid", borderRadius: 24, transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)", overflow: "hidden" },
+  providerCardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 },
+  providerImg: { width: 64, height: 64, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, shadow: "0 8px 16px rgba(0,0,0,0.1)" },
+  providerBadgeRow: { display: "flex", gap: 8 },
+  availBadge: { padding: "4px 10px", borderRadius: 99, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" },
+  providerName: { fontSize: 20, fontWeight: 700, marginBottom: 2 },
+  providerService: { fontSize: 14, fontWeight: 600, marginBottom: 12 },
+  providerMeta: { display: "flex", gap: 12, fontSize: 12, fontWeight: 500, marginBottom: 16 },
+  providerBio: { fontSize: 13, lineHeight: 1.6, marginBottom: 20, display: "-webkit-box", WebkitLineClamp: "2", WebkitBoxOrient: "vertical", overflow: "hidden" },
+  tagRow: { display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 24 },
+  tag: { padding: "4px 10px", borderRadius: 8, fontSize: 10, fontWeight: 600 },
+  providerActions: { display: "flex", gap: 12, marginTop: "auto" },
+  actionBtnPrimary: { flex: 2, padding: "12px", borderRadius: 12, border: "none", color: "#fff", fontWeight: 700, fontSize: 14, cursor: "pointer" },
+  actionBtnSecondary: { flex: 1, padding: "12px", borderRadius: 12, border: "1px solid", background: "transparent", fontWeight: 700, fontSize: 14, cursor: "pointer" },
 
   appPromoCard: { display: "flex", alignItems: "center", padding: "60px", border: "1px solid", borderRadius: 24, gap: 40 },
   appPromoText: { flex: 1 },

@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { ValidationError, UniqueConstraintError, ForeignKeyConstraintError, DatabaseError } from 'sequelize';
 
 export class AppError extends Error {
   statusCode: number;
@@ -14,7 +13,7 @@ export class AppError extends Error {
 }
 
 export const errorHandler = (
-  err: Error | AppError | DatabaseError,
+  err: any,
   _req: Request,
   res: Response,
   _next: NextFunction
@@ -23,38 +22,27 @@ export const errorHandler = (
 
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
-      error: err.message,
+      message: err.message,
     });
     return;
   }
 
-  // Sequelize error handling
-  if (err instanceof ValidationError) {
-    res.status(400).json({
-      error: 'Validation error',
-      details: err.errors.map(e => ({ field: e.path, message: e.message })),
-    });
+  // Postgres unique constraint error
+  if (err.code === '23505') {
+    res.status(409).json({ message: 'A record with this value already exists' });
     return;
   }
 
-  if (err instanceof UniqueConstraintError) {
-    res.status(409).json({ error: 'A record with this value already exists' });
-    return;
-  }
-
-  if (err instanceof ForeignKeyConstraintError) {
-    res.status(400).json({ error: 'Related record not found' });
-    return;
-  }
-
-  if (err instanceof DatabaseError) {
-    res.status(400).json({ error: 'Database error' });
+  // Postgres foreign key constraint error
+  if (err.code === '23503') {
+    res.status(400).json({ message: 'Related record not found' });
     return;
   }
 
   // Default error
-  res.status(500).json({
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error',
+  res.status(err.status || 500).json({
+    message: err.message || 'Internal server error',
+    error: process.env.NODE_ENV === 'development' ? err : {}
   });
 };
 

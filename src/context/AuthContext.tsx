@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosInstance from '../api/axiosInstance';
 
 interface User {
   id: string;
   name: string;
+  email?: string;
   role: 'client' | 'provider' | 'admin' | 'authorized';
 }
 
@@ -24,30 +25,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    if (savedToken) {
-      setToken(savedToken);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${savedToken}`;
-      // TODO: GET /auth/me to validate token
-      // axios.get(`${import.meta.env.VITE_API_URL}/auth/me`)
-      //   .then(res => setUser(res.data.user))
-      //   .catch(() => logout())
-      //   .finally(() => setIsLoading(false));
-      
-      // Temporary mock validation
+    const checkAuth = async () => {
+      const savedToken = localStorage.getItem('token');
       const savedUser = localStorage.getItem('user');
-      if (savedUser) {
+      
+      if (savedToken && savedUser) {
+        setToken(savedToken);
         try {
-          setUser(JSON.parse(savedUser));
+          const userData = JSON.parse(savedUser);
+          setUser(userData);
+          
+          // Verify token with backend
+          const res = await axiosInstance.get(`/auth/profile/${userData.id}`);
+          setUser(res.data.user);
+          localStorage.setItem('user', JSON.stringify(res.data.user));
         } catch (error) {
-          console.error('Failed to parse saved user:', error);
+          console.error('Auth verification failed:', error);
           logout();
         }
       }
       setIsLoading(false);
-    } else {
-      setIsLoading(false);
-    }
+    };
+
+    checkAuth();
   }, []);
 
   const login = (userData: User, newToken: string) => {
@@ -55,7 +55,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(newToken);
     localStorage.setItem('token', newToken);
     localStorage.setItem('user', JSON.stringify(userData));
-    axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
   };
 
   const logout = () => {
@@ -63,7 +62,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setToken(null);
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-    delete axios.defaults.headers.common['Authorization'];
   };
 
   return (

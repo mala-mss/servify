@@ -2,17 +2,10 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.routes';
-import userRoutes from './routes/user.routes';
 import serviceRoutes from './routes/service.routes';
 import bookingRoutes from './routes/booking.routes';
-import jobRoutes from './routes/job.routes';
-import reviewRoutes from './routes/review.routes';
-import transactionRoutes from './routes/transaction.routes';
-import scheduleRoutes from './routes/schedule.routes';
-import notificationRoutes from './routes/notification.routes';
-import { errorHandler } from './middleware/errorHandler';
-import { connectDB, syncDB } from './config';
-import './models'; // Import models to ensure they are registered
+import userRoutes from './routes/user.routes';
+import pool from './db';
 
 dotenv.config();
 
@@ -32,34 +25,41 @@ app.use((req, _res, next) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/bookings', bookingRoutes);
-app.use('/api/jobs', jobRoutes);
-app.use('/api/reviews', reviewRoutes);
-app.use('/api/transactions', transactionRoutes);
-app.use('/api/schedules', scheduleRoutes);
-app.use('/api/notifications', notificationRoutes);
+app.use('/api/users', userRoutes);
 
 // Health check
-app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/api/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT NOW()');
+    res.json({ status: 'ok', db: 'connected', timestamp: new Date().toISOString() });
+  } catch (err: any) {
+    res.status(500).json({ status: 'error', db: 'disconnected', error: err.message });
+  }
 });
 
 // Error handling
-app.use(errorHandler);
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error(err.stack);
+  res.status(err.status || 500).json({
+    message: err.message || 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err : {}
+  });
+});
 
 const startServer = async () => {
   try {
-    await connectDB();
-    await syncDB();
+    // Test DB connection
+    await pool.query('SELECT NOW()');
+    console.log('✅ Database connected');
     
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 };

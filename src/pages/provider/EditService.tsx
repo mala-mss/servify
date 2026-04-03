@@ -6,7 +6,7 @@ import { useNavigate, useParams } from "react-router-dom";
 export default function EditService() {
   const { palette: p } = useTheme();
   const navigate = useNavigate();
-  const { id } = useParams(); // In a real app, use this to fetch data
+  useParams(); // Declared but not used yet - will be used when fetching data
 
   const [formData, setFormData] = useState({
     title: "Professional Babysitting",

@@ -13,7 +13,7 @@ router.post(
     body('name').notEmpty().withMessage('Name is required'),
     body('email').isEmail().withMessage('Valid email is required'),
     body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
-    body('role').optional().isIn(['client', 'provider', 'admin', 'authorized']).withMessage('Invalid role'),
+    body('role').optional().isIn(['client', 'provider', 'admin']).withMessage('Invalid role'),
   ]),
   asyncHandler(register)
 );
@@ -27,7 +27,7 @@ router.post(
   asyncHandler(login)
 );
 
-router.get('/:id', authenticate, asyncHandler(getProfile));
-router.put('/:id', authenticate, asyncHandler(updateProfile));
+router.get('/profile/:id', authenticate, asyncHandler(getProfile));
+router.put('/profile/:id', authenticate, asyncHandler(updateProfile));
 
 export default router;

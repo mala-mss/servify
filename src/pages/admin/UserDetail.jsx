@@ -1,15 +1,16 @@
-import React from 'react';
 import { useTheme } from "@/context/ThemeContext";
+import { useParams } from "react-router-dom";
 
-const UserDetail = () => {
+export default function UserDetail() {
   const { palette: p } = useTheme();
+  const { id } = useParams();
 
   const cardStyle = {
     background: p.cardBg,
     border: `1px solid ${p.border}`,
     borderRadius: 16,
     padding: 24,
-    transition: "all 0.3s ease",
+    transition: "all 0.3s ease"
   };
 
   return (
@@ -18,19 +19,16 @@ const UserDetail = () => {
         <h1 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 32, fontWeight: 400, color: p.text, marginBottom: 8 }}>
           User Detail
         </h1>
-        <p style={{ fontSize: 14, color: p.textMuted }}>
-          Detailed profile and activity information for a specific user.
+        <p style={{ color: p.textMuted, fontSize: 14 }}>
+          Viewing user ID: {id}
         </p>
       </div>
 
       <div style={cardStyle}>
-        <p style={{ color: p.text }}>Content for User Detail will be implemented here.</p>
-        <div style={{ marginTop: 24, padding: 40, border: `2px dashed ${p.border}`, borderRadius: 12, textAlign: 'center', color: p.textMuted }}>
-           List/Management UI Placeholder
+        <div style={{ color: p.textMuted, textAlign: "center", padding: "40px 0" }}>
+          User details will be displayed here
         </div>
       </div>
     </div>
   );
-};
-
-export default Userdetail;
+}

@@ -21,25 +21,14 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // TODO: POST /auth/login
-      // const response = await axios.post(`${import.meta.env.VITE_API_URL}/auth/login`, { email, password });
-      // const { token, user } = response.data;
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      const response = await axios.post(`${apiUrl}/auth/login`, { email, password });
+      const { token, user } = response.data;
       
-      // Mock response for demonstration
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      if (email === 'client@example.com') {
-        login({ id: '1', name: 'John Client', role: 'client' }, 'mock-token-client');
-      } else if (email === 'provider@example.com') {
-        login({ id: '2', name: 'Dr. Provider', role: 'provider' }, 'mock-token-provider');
-      } else if (email === 'admin@example.com') {
-        login({ id: '3', name: 'Admin User', role: 'admin' }, 'mock-token-admin');
-      } else {
-        throw new Error('Invalid credentials');
-      }
-      
+      login(user, token);
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
       setLoading(false);
     }

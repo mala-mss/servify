@@ -84,7 +84,7 @@ export default function Schedule() {
 
         {/* Time Rows */}
         <div style={{ display: "grid", gridTemplateColumns: "60px repeat(7, 1fr)" }}>
-          {TIMES.map((time, timeIdx) => (
+          {TIMES.map((time) => (
             <React.Fragment key={time}>
               <div style={timeCellStyle}>{time}</div>
               {DAYS.map((_, dayIdx) => (

@@ -3,7 +3,6 @@ import { Routes, Route, Outlet } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import RoleRedirect from './RoleRedirect';
 import { useAuth } from '../context/AuthContext';
-import { Navigate } from 'react-router-dom';
 // Auth Pages
 import Login from '../pages/auth/Login';
 import Register from '../pages/auth/Register';
@@ -13,7 +12,7 @@ import ResetPassword from '../pages/auth/ResetPassword';
 // Client Pages
 import Home from '../pages/client/Home';
 import BrowseServices from '../pages/client/BrowseServices';
-import ServiceDetails from '../pages/client/ServiceDetails';
+import ServiceDetails from '../pages/client/ServiceDetails'; 
 import BookingRequest from '../pages/client/BookingRequest';
 import BookingConfirm from '../pages/client/BookingConfirm';
 import MyBooking from '../pages/client/MyBooking';
@@ -47,7 +46,7 @@ import ProviderNotifications from '../pages/provider/Notifications';
 import AdminLayout from '../pages/admin/AdminLayout';
 import AdminDashboard from '../pages/admin/Dashboard';
 import ManageUsers from '../pages/admin/ManageUsers';
-import UserDetail from '../pages/admin/Userdetail';
+import UserDetail from '../pages/admin/UserDetail';
 import ManageBookings from '../pages/admin/ManageBookings';
 import AdminBookingDetail from '../pages/admin/BookingDetail';
 import ManageServices from '../pages/admin/ManageServices';
@@ -66,8 +65,30 @@ import ApprovalHistory from '../pages/authorized/ApprovalHistory';
 import Dashboard from '../pages/Dashboard';
 import Booking from '../pages/Booking';
 
+import ClientNavbar from '../components/layout/ClientNavbar';
+import axiosInstance from '../api/axiosInstance';
+
 const ClientLayout: React.FC = () => {
-  return <Outlet />;
+  const [theme, setTheme] = React.useState("dark");
+  
+  const handleSearch = async (query: string) => {
+    // If we are not on home, we might want to redirect to home with query or just log
+    console.log("Global search:", query);
+    if (window.location.pathname !== '/client/home') {
+        window.location.href = `/client/home?search=${encodeURIComponent(query)}`;
+    }
+  };
+
+  return (
+    <div style={{ background: theme === 'dark' ? '#0e0e0e' : '#F8FBFB', minHeight: '100vh' }}>
+      <ClientNavbar 
+        theme={theme} 
+        onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+        onSearch={handleSearch}
+      />
+      <Outlet context={{ theme }} />
+    </div>
+  );
 };
 
 const AppRouter: React.FC = () => {

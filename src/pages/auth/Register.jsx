@@ -65,14 +65,13 @@ const Register = () => {
     setLoading(true);
 
     try {
-      // TODO: POST /auth/register
-      // await axios.post(`${import.meta.env.VITE_API_URL}/auth/register`, { ...formData, role });
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+      await axios.post(`${apiUrl}/auth/register`, { ...formData, role });
       
-      await new Promise(resolve => setTimeout(resolve, 1500));
       alert('Registration successful! Please login.');
       navigate('/login');
     } catch (err) {
-      setError(err.message || 'Registration failed');
+      setError(err.response?.data?.message || err.message || 'Registration failed');
     } finally {
       setLoading(false);
     }

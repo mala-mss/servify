@@ -1,41 +1,47 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { jwtSecret } from '../config/auth.config';
-import { User } from '../models';
+import { query } from '../db';
+import dotenv from 'dotenv';
+
+dotenv.config();
+
+const jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
 
 export interface AuthRequest extends Request {
-  user?: User;
-  userId?: string;
+  user?: any;
+  userId?: number;
 }
 
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const token = req.headers.authorization?.replace('Bearer ', '');
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      res.status(401).json({ error: 'Authentication required' });
+      res.status(401).json({ message: 'Authentication required' });
       return;
     }
 
-    const decoded = jwt.verify(token, jwtSecret) as { userId: string };
+    const decoded = jwt.verify(token, jwtSecret) as { userId: number };
+    
+    const result = await query('SELECT id, name, email, role FROM "user" WHERE id = $1', [decoded.userId]);
 
-    const user = await User.findByPk(decoded.userId);
-
-    if (!user || !user.isActive) {
-      res.status(401).json({ error: 'Invalid or inactive user' });
+    if (result.rows.length === 0) {
+      res.status(401).json({ message: 'Invalid user' });
       return;
     }
 
-    req.user = user;
-    req.userId = user.id;
+    req.user = result.rows[0];
+    req.userId = result.rows[0].id;
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error);
     if (error instanceof jwt.JsonWebTokenError) {
-      res.status(401).json({ error: 'Invalid token' });
+      res.status(401).json({ message: 'Invalid token' });
     } else if (error instanceof jwt.TokenExpiredError) {
-      res.status(401).json({ error: 'Token expired' });
+      res.status(401).json({ message: 'Token expired' });
     } else {
-      res.status(500).json({ error: 'Authentication error' });
+      res.status(500).json({ message: 'Authentication error' });
     }
   }
 };
@@ -43,12 +49,12 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
 export const authorize = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
-      res.status(401).json({ error: 'Authentication required' });
+      res.status(401).json({ message: 'Authentication required' });
       return;
     }
 
     if (!roles.includes(req.user.role)) {
-      res.status(403).json({ error: 'Insufficient permissions' });
+      res.status(403).json({ message: 'Insufficient permissions' });
       return;
     }
 

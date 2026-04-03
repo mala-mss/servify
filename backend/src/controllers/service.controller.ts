@@ -1,121 +1,117 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
+import { query } from '../db';
 import { AuthRequest } from '../middleware/auth';
-import { Service, User } from '../models';
-import { AppError } from '../middleware/errorHandler';
 
-export const getAllServices = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { category, isActive, providerId } = req.query;
+export const getAllServices = async (req: Request, res: Response): Promise<void> => {
+  const { categoryId } = req.query;
 
-  const where: any = {};
-  if (category) where.category = category;
-  if (isActive) where.isActive = isActive === 'true';
-  if (providerId) where.providerId = providerId;
+  try {
+    let sql = `
+      SELECT s.*, sc.name as category_name 
+      FROM service s
+      LEFT JOIN service_category sc ON s.category_id_fk = sc.id_category
+    `;
+    const params: any[] = [];
 
-  const services = await Service.findAll({
-    where,
-    include: [
-      {
-        model: User,
-        as: 'provider',
-        attributes: ['id', 'name', 'avatar', 'rating'],
-      },
-    ],
-    order: [['createdAt', 'DESC']],
-  });
+    if (categoryId) {
+      sql += ' WHERE s.category_id_fk = $1';
+      params.push(categoryId);
+    }
 
-  res.json({ services });
+    const result = await query(sql, params);
+    res.json({ services: result.rows });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Internal server error', error: error.message });
+  }
 };
 
-export const getServiceById = async (req: AuthRequest, res: Response): Promise<void> => {
-  const service = await Service.findByPk(req.params.id, {
-    include: [
-      {
-        model: User,
-        as: 'provider',
-        attributes: ['id', 'name', 'avatar', 'rating', 'bio'],
-      },
-    ],
-  });
+export const getServiceById = async (req: Request, res: Response): Promise<void> => {
+  const { id } = req.params;
 
-  if (!service) {
-    throw new AppError('Service not found', 404);
+  try {
+    const result = await query(
+      `SELECT s.*, sc.name as category_name 
+       FROM service s
+       LEFT JOIN service_category sc ON s.category_id_fk = sc.id_category
+       WHERE s.id_service = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ message: 'Service not found' });
+      return;
+    }
+
+    res.json({ service: result.rows[0] });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  res.json({ service });
 };
 
 export const createService = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { name, description, price, unit, category } = req.body;
-  const providerId = req.user!.id;
+  const { name, description, base_price, category_id_fk } = req.body;
 
-  const service = await Service.create({
-    providerId,
-    name,
-    description,
-    price,
-    unit,
-    category,
-    isActive: true,
-  });
+  try {
+    const result = await query(
+      'INSERT INTO service (name, description, base_price, category_id_fk) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name, description, base_price, category_id_fk]
+    );
 
-  res.status(201).json({
-    message: 'Service created successfully',
-    service,
-  });
+    res.status(201).json({
+      message: 'Service created successfully',
+      service: result.rows[0],
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
 export const updateService = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id } = req.params;
-  const { name, description, price, unit, category, isActive } = req.body;
+  const { name, description, base_price, category_id_fk } = req.body;
 
-  const service = await Service.findByPk(id);
-  if (!service) {
-    throw new AppError('Service not found', 404);
+  try {
+    const result = await query(
+      'UPDATE service SET name = COALESCE($1, name), description = COALESCE($2, description), base_price = COALESCE($3, base_price), category_id_fk = COALESCE($4, category_id_fk) WHERE id_service = $5 RETURNING *',
+      [name, description, base_price, category_id_fk, id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ message: 'Service not found' });
+      return;
+    }
+
+    res.json({
+      message: 'Service updated successfully',
+      service: result.rows[0],
+    });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  if (service.providerId !== req.user!.id && req.user!.role !== 'admin') {
-    throw new AppError('Unauthorized', 403);
-  }
-
-  await service.update({
-    name: name || service.name,
-    description: description || service.description,
-    price: price || service.price,
-    unit: unit || service.unit,
-    category: category || service.category,
-    isActive: isActive !== undefined ? isActive : service.isActive,
-  });
-
-  res.json({
-    message: 'Service updated successfully',
-    service,
-  });
 };
 
 export const deleteService = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id } = req.params;
 
-  const service = await Service.findByPk(id);
-  if (!service) {
-    throw new AppError('Service not found', 404);
+  try {
+    const result = await query('DELETE FROM service WHERE id_service = $1 RETURNING *', [id]);
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ message: 'Service not found' });
+      return;
+    }
+
+    res.json({ message: 'Service deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  if (service.providerId !== req.user!.id && req.user!.role !== 'admin') {
-    throw new AppError('Unauthorized', 403);
-  }
-
-  await service.destroy();
-
-  res.json({ message: 'Service deleted successfully' });
 };
 
-export const getProviderServices = async (req: AuthRequest, res: Response): Promise<void> => {
-  const providerId = req.params.providerId;
-
-  const services = await Service.findAll({
-    where: { providerId },
-    order: [['createdAt', 'DESC']],
-  });
-
-  res.json({ services });
+export const getCategories = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await query('SELECT * FROM service_category');
+    res.json({ categories: result.rows });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
