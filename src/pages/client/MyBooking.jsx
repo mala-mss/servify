@@ -199,12 +199,12 @@ export default function MyBooking() {
       <div style={{ ...styles.bgGrid, backgroundImage: theme === 'dark' ? `radial-gradient(circle at 2px 2px, rgba(255,255,255,0.02) 1px, transparent 0)` : `radial-gradient(circle at 2px 2px, ${p.grid} 1px, transparent 0)` }} />
       <MouseGlow p={p} />
 
-      <nav style={{ ...styles.nav, background: p.navBg, borderBottomColor: p.border }}>
+      {/*<nav style={{ ...styles.nav, background: p.navBg, borderBottomColor: p.border }}>
         <a href="/client/home" style={{ ...styles.navLogo, textDecoration: 'none' }}>
           <span style={{ ...styles.logoMark, color: p.primary }}>◈</span>
           <span style={{ ...styles.logoText, color: p.text }}>Servify</span>
         </a>
-        <div style={styles.navLinks}>
+         <div style={styles.navLinks}>
           <a href="/client/browse" style={{ ...styles.navLink, color: p.textMuted }}>Browse</a>
           <a href="/client/my-bookings" style={{ ...styles.navLink, color: p.primary }}>My bookings</a>
           
@@ -282,12 +282,12 @@ export default function MyBooking() {
               )}
             </AnimatePresence>
           </div>
-        </div>
+        </div> 
         <div style={styles.navRight}>
           <button onClick={toggleTheme} style={{ ...styles.themeBtn, color: p.text, background: p.cardBg, borderColor: p.border }}>{theme === "dark" ? "☼" : "☾"}</button>
           <a href="/client/profile" style={{ ...styles.avatarBtn, background: theme === 'dark' ? "rgba(47,176,188,0.15)" : "#D6FFF9", borderColor: p.accent, color: p.primary }}>{user?.name?.[0]?.toUpperCase()}</a>
         </div>
-      </nav>
+      </nav>*/}
 
       <div style={styles.container}>
         <motion.section initial="hidden" animate="visible" variants={sectionVariants}>

@@ -5,7 +5,7 @@ import { PALETTES, styles } from "./Notification.styles";
 import { BOOKINGS, INITIAL_NOTIFICATIONS } from "../../utils/mockData";
 
 // Mock hooks
-const useAuth = () => ({ user: { name: "Yassine" } });
+const useAuth = () => ({ user: { name: "malak" } });
 
 const getTypeStyles = (type) => {
   switch (type) {
@@ -183,7 +183,7 @@ export default function Notification() {
       <div style={{ ...styles.bgGrid, backgroundImage: theme === 'dark' ? `radial-gradient(circle at 2px 2px, rgba(255,255,255,0.02) 1px, transparent 0)` : `radial-gradient(circle at 2px 2px, ${p.grid} 1px, transparent 0)` }} />
       <GlowBackground p={p} />
 
-      <nav style={{ ...styles.nav, background: p.navBg, borderBottomColor: p.border }}>
+      {/* <nav style={{ ...styles.nav, background: p.navBg, borderBottomColor: p.border }}>
         <a href="/client/home" style={{ ...styles.navLogo, textDecoration: 'none' }}>
           <span style={{ ...styles.logoMark, color: p.primary }}>◈</span>
           <span style={{ ...styles.logoText, color: p.text }}>Servify</span>
@@ -243,7 +243,7 @@ export default function Notification() {
           <button onClick={toggleTheme} style={{ ...styles.themeBtn, color: p.text, background: p.cardBg, borderColor: p.border }}>{theme === "dark" ? "☼" : "☾"}</button>
           <a href="/client/profile" style={{ ...styles.avatarBtn, background: theme === 'dark' ? "rgba(47,176,188,0.15)" : "#D6FFF9", borderColor: p.accent, color: p.primary }}>{user?.name?.[0]?.toUpperCase()}</a>
         </div>
-      </nav>
+      </nav> */}
 
       <div style={styles.container}>
         <motion.section initial="hidden" animate="visible" variants={sectionVariants}>
