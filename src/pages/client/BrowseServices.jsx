@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axiosInstance from "../../api/axiosInstance";
 import { useAuth } from "../../context/AuthContext";
+import BookingModal from "../../components/common/BookingModal";
+import BookingFlow from "../../components/client/BookingFlow";
 
 const PALETTES = {
   dark: {
@@ -57,6 +59,8 @@ export default function BrowseServices() {
   const [services, setServices] = useState([]);
   const [categories, setCategories] = useState([{ id_category: "all", name: "All Services" }]);
   const [loading, setLoading] = useState(true);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState(null);
   const notifRef = useRef(null);
 
   const p = PALETTES[theme];
@@ -162,13 +166,35 @@ export default function BrowseServices() {
                 <p style={styles.cardService}>{service.category_name}</p>
                 <div style={styles.cardFooter}>
                   <div style={styles.cardPrice}>Starting from ${service.base_price || '0'}</div>
-                  <button style={{ ...styles.bookBtn, background: p.primary }}>View Details</button>
+                  <button
+                    onClick={() => { setSelectedService(service); setIsBookingModalOpen(true); }}
+                    style={{ ...styles.bookBtn, background: p.primary }}
+                  >
+                    Select Service
+                  </button>
                 </div>
               </motion.div>
             ))}
           </div>
         )}
       </main>
+
+      <BookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => { setIsBookingModalOpen(false); setSelectedService(null); }}
+        theme={theme}
+        title="Book a Service"
+      >
+        <BookingFlow
+          initialServiceId={selectedService?.id_service}
+          initialServiceName={selectedService?.name}
+          theme={theme}
+          onComplete={(booking) => {
+            console.log("Booking completed:", booking);
+          }}
+          onClose={() => { setIsBookingModalOpen(false); setSelectedService(null); }}
+        />
+      </BookingModal>
     </div>
   );
 }

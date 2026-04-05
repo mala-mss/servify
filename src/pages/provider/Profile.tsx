@@ -1,19 +1,71 @@
 // src/pages/provider/Profile.tsx
+import { useState, useEffect } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
-import { useState } from "react";
+import axiosInstance from "../../api/axiosInstance";
 
 export default function Profile() {
   const { palette: p } = useTheme();
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
-    fullName: user?.name || "John Doe",
-    email: user?.email || "john@example.com",
-    phone: "+213 555 123 456",
-    bio: "Professional caregiver with 5+ years of experience in elderly care and child assistance. Dedicated to providing high-quality service.",
-    hourlyRate: "1200",
+    name: "",
+    email: "",
+    phone_number: "",
+    address: "",
+    bio: "",
+    years_of_exp: 0,
+    price_per_hour: 0,
   });
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        setLoading(true);
+        const response = await axiosInstance.get("/providers/profile");
+        if (response.data.success) {
+          const profile = response.data.profile;
+          setFormData({
+            name: profile.name || "",
+            email: profile.email || "",
+            phone_number: profile.phone_number || "",
+            address: profile.address || "",
+            bio: profile.bio || "",
+            years_of_exp: profile.years_of_exp || 0,
+            price_per_hour: profile.price_per_hour || 0,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to fetch profile:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      setSaving(true);
+      await axiosInstance.put("/providers/profile", formData);
+      
+      // Update global Auth state so name changes reflect in Sidebar etc.
+      updateUser({
+        name: formData.name,
+        email: formData.email
+      });
+
+      alert("Profile updated successfully!");
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      alert("Failed to update profile.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const cardStyle: React.CSSProperties = {
     background: p.cardBg,
@@ -65,7 +117,10 @@ export default function Profile() {
     cursor: "pointer",
     fontFamily: "'DM Sans', sans-serif",
     marginTop: 10,
+    opacity: saving ? 0.7 : 1
   };
+
+  if (loading) return <div style={{ padding: 40, textAlign: 'center', color: p.textMuted }}>Loading profile...</div>;
 
   return (
     <div style={{ animation: "fadeUp .4s ease both" }}>
@@ -77,24 +132,24 @@ export default function Profile() {
       <div style={cardStyle}>
         <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 30, paddingBottom: 25, borderBottom: `1px solid ${p.border}` }}>
           <div style={{ width: 80, height: 80, borderRadius: "50%", background: "rgba(47,176,188,.15)", border: `1px solid ${p.primary}`, color: p.primary, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28, fontWeight: 500 }}>
-            {formData.fullName[0]}
+            {formData.name[0]?.toUpperCase()}
           </div>
           <div>
-            <div style={{ fontSize: 18, fontWeight: 500, color: p.text, marginBottom: 4 }}>{formData.fullName}</div>
+            <div style={{ fontSize: 18, fontWeight: 500, color: p.text, marginBottom: 4 }}>{formData.name}</div>
             <div style={{ fontSize: 13, color: p.textMuted }}>Service Provider · Verified</div>
-            <button style={{ background: "none", border: "none", color: p.primary, fontSize: 12, padding: 0, marginTop: 8, cursor: "pointer", fontWeight: 500 }}>Change Avatar</button>
           </div>
         </div>
 
-        <form onSubmit={(e) => e.preventDefault()}>
+        <form onSubmit={handleSubmit}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
             <div>
               <label style={labelStyle}>Full Name</label>
               <input
                 type="text"
-                value={formData.fullName}
-                onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 style={inputStyle}
+                required
               />
             </div>
             <div>
@@ -104,6 +159,7 @@ export default function Profile() {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 style={inputStyle}
+                required
               />
             </div>
           </div>
@@ -113,8 +169,8 @@ export default function Profile() {
               <label style={labelStyle}>Phone Number</label>
               <input
                 type="text"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                value={formData.phone_number}
+                onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
                 style={inputStyle}
               />
             </div>
@@ -122,8 +178,29 @@ export default function Profile() {
               <label style={labelStyle}>Hourly Rate (DZD)</label>
               <input
                 type="number"
-                value={formData.hourlyRate}
-                onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+                value={formData.price_per_hour}
+                onChange={(e) => setFormData({ ...formData, price_per_hour: parseInt(e.target.value) })}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0 20px" }}>
+            <div>
+              <label style={labelStyle}>Years of Experience</label>
+              <input
+                type="number"
+                value={formData.years_of_exp}
+                onChange={(e) => setFormData({ ...formData, years_of_exp: parseInt(e.target.value) })}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Location / Address</label>
+              <input
+                type="text"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 style={inputStyle}
               />
             </div>
@@ -137,7 +214,9 @@ export default function Profile() {
           />
 
           <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button type="submit" style={primaryBtnStyle}>Save Changes</button>
+            <button type="submit" disabled={saving} style={primaryBtnStyle}>
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
           </div>
         </form>
       </div>

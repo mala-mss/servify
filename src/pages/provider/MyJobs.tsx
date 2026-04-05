@@ -1,35 +1,61 @@
-import React from 'react';
+// src/pages/provider/MyJobs.tsx
+import { useState, useEffect } from "react";
 import { useTheme } from "../../context/ThemeContext";
+import axiosInstance from "../../api/axiosInstance";
 
-type JobStatus = "confirmed" | "pending" | "in_progress" | "completed" | "declined";
+type JobStatus = "confirmed" | "pending" | "in_progress" | "completed" | "cancelled" | "declined";
 
 interface Job {
-  id: string;
-  client: string;
-  service: string;
+  id_booking: number;
+  client_name: string;
+  service_name: string;
   time: string;
   date: string;
   status: JobStatus;
+  amount: number;
+  address: string;
 }
 
-const STATUS_CONFIG: Record<JobStatus, { color: string; bg: string; label: string }> = {
+const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
   confirmed: { color: "#2FB0BC", bg: "rgba(47,176,188,.1)", label: "Confirmed" },
   pending: { color: "#fb923c", bg: "rgba(251,146,60,.1)", label: "Pending" },
   in_progress: { color: "#a78bfa", bg: "rgba(167,139,250,.1)", label: "In Progress" },
   completed: { color: "#4ade80", bg: "rgba(74,222,128,.1)", label: "Completed" },
+  cancelled: { color: "#f87171", bg: "rgba(248,113,113,.1)", label: "Cancelled" },
   declined: { color: "#f87171", bg: "rgba(248,113,113,.1)", label: "Declined" },
 };
 
-const MOCK_JOBS: Job[] = [
-  { id: "1", client: "Amine Belkacem", service: "Elder Care", time: "14:00 - 17:00", date: "Today, 25 Oct", status: "in_progress" },
-  { id: "2", client: "Sarah Mansouri", service: "Babysitting", time: "09:00 - 12:00", date: "Tomorrow, 26 Oct", status: "confirmed" },
-  { id: "3", client: "Karim Djebbar", service: "Home Cleaning", time: "10:00 - 13:00", date: "27 Oct, 2023", status: "pending" },
-  { id: "4", client: "Lila Haddad", service: "Elder Care", time: "15:00 - 18:00", date: "28 Oct, 2023", status: "completed" },
-  { id: "5", client: "Yacine Brahimi", service: "Babysitting", time: "18:00 - 21:00", date: "29 Oct, 2023", status: "declined" },
-];
-
 export default function MyJobs() {
   const { palette: p } = useTheme();
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchJobs = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get("/bookings");
+      if (response.data.bookings) {
+        setJobs(response.data.bookings);
+      }
+    } catch (error) {
+      console.error("Failed to fetch jobs:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchJobs();
+  }, []);
+
+  const updateStatus = async (id: number, status: string) => {
+    try {
+      await axiosInstance.put(`/bookings/${id}/status`, { status });
+      fetchJobs();
+    } catch (error) {
+      console.error("Failed to update status:", error);
+    }
+  };
 
   const cardStyle: React.CSSProperties = {
     background: p.cardBg,
@@ -60,53 +86,74 @@ export default function MyJobs() {
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "4px" }}>
-        {MOCK_JOBS.map((job) => {
-          const status = STATUS_CONFIG[job.status];
-          return (
-            <div 
-              key={job.id} 
-              style={compactCardStyle}
-              onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(47,176,188,.3)")}
-              onMouseLeave={(e) => (e.currentTarget.style.borderColor = p.border)}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ fontSize: "16px", fontWeight: 500, color: p.text }}>{job.client}</span>
-                <span style={{ 
-                  fontSize: "11px", 
-                  fontWeight: 600, 
-                  padding: "4px 10px", 
-                  borderRadius: "999px", 
-                  color: status.color, 
-                  backgroundColor: status.bg,
-                  textTransform: "capitalize"
-                }}>
-                  {status.label}
-                </span>
-              </div>
-              
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                  <span style={{ fontSize: "13px", color: p.text }}>{job.service}</span>
-                  <span style={{ fontSize: "12px", color: p.textMuted }}>{job.date} • {job.time}</span>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: 40, color: p.textMuted }}>Loading jobs...</div>
+      ) : jobs.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: 60, color: p.textMuted }}>No jobs found</div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "4px" }}>
+          {jobs.map((job) => {
+            const status = STATUS_CONFIG[job.status] || STATUS_CONFIG.pending;
+            return (
+              <div 
+                key={job.id_booking} 
+                style={compactCardStyle}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(47,176,188,.3)")}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = p.border)}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "16px", fontWeight: 500, color: p.text }}>{job.client_name}</span>
+                  <span style={{ 
+                    fontSize: "11px", 
+                    fontWeight: 600, 
+                    padding: "4px 10px", 
+                    borderRadius: "999px", 
+                    color: status.color, 
+                    backgroundColor: status.bg,
+                    textTransform: "capitalize"
+                  }}>
+                    {status.label}
+                  </span>
                 </div>
                 
-                <button style={{ 
-                  fontSize: "12px", 
-                  color: p.primary, 
-                  background: "transparent", 
-                  border: "none", 
-                  cursor: "pointer",
-                  padding: "0",
-                  fontWeight: 500
-                }}>
-                  View Details
-                </button>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                    <span style={{ fontSize: "13px", color: p.text }}>{job.service_name}</span>
+                    <span style={{ fontSize: "12px", color: p.textMuted }}>{new Date(job.date).toLocaleDateString()} • {job.time}</span>
+                    <span style={{ fontSize: "11px", color: p.textMuted }}>📍 {job.address}</span>
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    {job.status === 'confirmed' && (
+                        <button 
+                            onClick={() => updateStatus(job.id_booking, 'in_progress')}
+                            style={{ fontSize: "12px", color: "#fff", background: p.primary, border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
+                        >Start Job</button>
+                    )}
+                    {job.status === 'in_progress' && (
+                        <button 
+                            onClick={() => updateStatus(job.id_booking, 'completed')}
+                            style={{ fontSize: "12px", color: "#fff", background: "#4ade80", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
+                        >Mark Completed</button>
+                    )}
+                    <button style={{ 
+                        fontSize: "12px", 
+                        color: p.textMuted, 
+                        background: "transparent", 
+                        border: `1px solid ${p.border}`, 
+                        borderRadius: 6,
+                        padding: "6px 12px",
+                        cursor: "pointer"
+                    }}>
+                        Details
+                    </button>
+                  </div>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

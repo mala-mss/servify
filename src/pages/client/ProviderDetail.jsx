@@ -1,6 +1,6 @@
 // src/pages/client/ProviderDetail.jsx
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import axiosInstance from "../../api/axiosInstance";
 
@@ -32,6 +32,7 @@ const PALETTES = {
 export default function ProviderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [provider, setProvider] = useState(null);
   const [loading, setLoading] = useState(true);
   const [theme] = useState("dark");
@@ -55,7 +56,11 @@ export default function ProviderDetail() {
   }, [id]);
 
   const handleBookNow = () => {
-    navigate(`/client/booking-request/${id}`);
+    if (location.state && location.state.serviceName) {
+      navigate("/client/checkout", { state: location.state });
+    } else {
+      navigate(`/client/booking-request/${id}`);
+    }
   };
 
   if (loading) return <div style={{ color: p.text, textAlign: 'center', padding: '100px' }}>Loading provider details...</div>;
@@ -117,6 +122,39 @@ export default function ProviderDetail() {
                   ))}
                 </div>
               </section>
+
+              <section style={styles.section}>
+                <div style={styles.reviewHeader}>
+                  <h2 style={{ ...styles.sectionTitle, color: p.text }}>Client Reviews</h2>
+                  <div style={styles.ratingBadge}>
+                    <span style={{ color: "#FFD700" }}>★</span> {provider.rating}
+                  </div>
+                </div>
+                
+                <div style={styles.reviewsList}>
+                  {(provider.reviews && provider.reviews.length > 0) ? (
+                    provider.reviews.map((rev, idx) => (
+                      <div key={idx} style={{ ...styles.reviewCard, background: p.cardBg, borderColor: p.border }}>
+                        <div style={styles.reviewUser}>
+                          <div style={{ ...styles.avatarSmall, background: "rgba(255,255,255,0.05)" }}>{rev.user_name?.[0] || "C"}</div>
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: 14 }}>{rev.user_name || "Anonymous Client"}</div>
+                            <div style={{ fontSize: 12, opacity: 0.5 }}>{new Date(rev.created_at).toLocaleDateString()}</div>
+                          </div>
+                          <div style={{ marginLeft: "auto", color: "#FFD700" }}>
+                            {"★".repeat(rev.rating)}{"☆".repeat(5 - rev.rating)}
+                          </div>
+                        </div>
+                        <p style={{ ...styles.reviewText, color: p.text }}>{rev.comment}</p>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ ...styles.reviewCard, background: p.cardBg, borderColor: p.border, textAlign: 'center', padding: '40px' }}>
+                      <p style={{ opacity: 0.5 }}>No reviews yet for this provider.</p>
+                    </div>
+                  )}
+                </div>
+              </section>
             </div>
 
             <div style={styles.rightCol}>
@@ -173,5 +211,12 @@ const styles = {
   benefits: { display: "flex", flexDirection: "column", gap: 12, marginBottom: 32 },
   benefitItem: { fontSize: 14, fontWeight: 500, display: "flex", gap: 10 },
   bookBtn: { width: "100%", padding: "18px", borderRadius: 16, border: "none", color: "#fff", fontSize: 16, fontWeight: 700, cursor: "pointer", marginBottom: 20, transition: "transform 0.2s" },
-  guarantee: { textAlign: "center", fontSize: 12, opacity: 0.6 }
+  guarantee: { textAlign: "center", fontSize: 12, opacity: 0.6 },
+  reviewHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 },
+  ratingBadge: { padding: "8px 16px", borderRadius: 12, background: "rgba(255,215,0,0.1)", color: "#FFD700", fontWeight: 700, fontSize: 18 },
+  reviewsList: { display: "flex", flexDirection: "column", gap: 16 },
+  reviewCard: { padding: "24px", borderRadius: 20, border: "1px solid" },
+  reviewUser: { display: "flex", gap: 12, alignItems: "center", marginBottom: 12 },
+  avatarSmall: { width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14 },
+  reviewText: { fontSize: 15, lineHeight: "1.6", opacity: 0.9 }
 };

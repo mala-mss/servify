@@ -1,135 +1,96 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { Notification, User } from '../models';
-import { AppError } from '../middleware/errorHandler';
-
-export const getAllNotifications = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { userId, type, isRead } = req.query;
-
-  const where: any = {};
-  if (userId) where.userId = userId;
-  if (type) where.type = type;
-  if (isRead !== undefined) where.isRead = isRead === 'true';
-
-  const notifications = await Notification.findAll({
-    where,
-    include: [
-      { model: User, as: 'user', attributes: ['id', 'name', 'avatar'] },
-    ],
-    order: [['createdAt', 'DESC']],
-    limit: 100,
-  });
-
-  res.json({ notifications });
-};
-
-export const getNotificationById = async (req: AuthRequest, res: Response): Promise<void> => {
-  const notification = await Notification.findByPk(req.params.id, {
-    include: [
-      { model: User, as: 'user', attributes: ['id', 'name', 'avatar'] },
-    ],
-  });
-
-  if (!notification) {
-    throw new AppError('Notification not found', 404);
-  }
-
-  res.json({ notification });
-};
+import { query } from '../db';
 
 export const getUserNotifications = async (req: AuthRequest, res: Response): Promise<void> => {
-  const userId = req.params.userId || req.user!.id;
-  const { isRead, limit } = req.query;
+  const userId = req.userId || req.user?.id;
 
-  const where: any = { userId };
-  if (isRead !== undefined) where.isRead = isRead === 'true';
+  try {
+    const result = await query(
+      'SELECT * FROM notification WHERE user_id = $1 ORDER BY created_at DESC',
+      [userId]
+    );
 
-  const notifications = await Notification.findAll({
-    where,
-    order: [['createdAt', 'DESC']],
-    limit: parseInt(limit as string, 10) || 50,
-  });
+    const unreadCountResult = await query(
+      'SELECT COUNT(*) FROM notification WHERE user_id = $1 AND is_read = false',
+      [userId]
+    );
 
-  const unreadCount = await Notification.count({
-    where: { userId, isRead: false },
-  });
-
-  res.json({
-    notifications,
-    unreadCount,
-  });
+    res.json({
+      success: true,
+      notifications: result.rows,
+      unreadCount: parseInt(unreadCountResult.rows[0].count, 10)
+    });
+  } catch (error: any) {
+    console.error('Fetch notifications error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
 export const markAsRead = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id } = req.params;
+  const userId = req.userId;
 
-  const notification = await Notification.findByPk(id);
-  if (!notification) {
-    throw new AppError('Notification not found', 404);
+  try {
+    const result = await query(
+      'UPDATE notification SET is_read = true WHERE id = $1 AND user_id = $2 RETURNING *',
+      [id, userId]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ message: 'Notification not found' });
+      return;
+    }
+
+    res.json({ message: 'Notification marked as read', notification: result.rows[0] });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  if (notification.userId !== req.user!.id && req.user!.role !== 'admin') {
-    throw new AppError('Unauthorized', 403);
-  }
-
-  await notification.update({ isRead: true });
-
-  res.json({ message: 'Notification marked as read', notification });
 };
 
 export const markAllAsRead = async (req: AuthRequest, res: Response): Promise<void> => {
-  const userId = req.params.userId || req.user!.id;
+  const userId = req.userId;
 
-  await Notification.update(
-    { isRead: true },
-    { where: { userId } }
-  );
+  try {
+    await query(
+      'UPDATE notification SET is_read = true WHERE user_id = $1',
+      [userId]
+    );
 
-  res.json({ message: 'All notifications marked as read' });
+    res.json({ message: 'All notifications marked as read' });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
 export const deleteNotification = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id } = req.params;
+  const userId = req.userId;
 
-  const notification = await Notification.findByPk(id);
-  if (!notification) {
-    throw new AppError('Notification not found', 404);
+  try {
+    const result = await query(
+      'DELETE FROM notification WHERE id = $1 AND user_id = $2 RETURNING *',
+      [id, userId]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ message: 'Notification not found' });
+      return;
+    }
+
+    res.json({ message: 'Notification deleted successfully' });
+  } catch (error: any) {
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  if (notification.userId !== req.user!.id && req.user!.role !== 'admin') {
-    throw new AppError('Unauthorized', 403);
-  }
-
-  await notification.destroy();
-
-  res.json({ message: 'Notification deleted successfully' });
 };
 
-export const createNotification = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { userId, type, priority, title, message, data } = req.body;
-
-  const notification = await Notification.create({
-    userId,
-    type,
-    priority: priority || 'medium',
-    title,
-    message,
-    data,
-    isRead: false,
-  });
-
-  res.status(201).json({
-    message: 'Notification created successfully',
-    notification,
-  });
-};
-
-export const getUnreadCount = async (req: AuthRequest, res: Response): Promise<void> => {
-  const userId = req.params.userId || req.user!.id;
-
-  const count = await Notification.count({
-    where: { userId, isRead: false },
-  });
-
-  res.json({ count });
+export const createNotificationInternal = async (userId: number, title: string, description: string, type: string) => {
+  try {
+    await query(
+      'INSERT INTO notification (user_id, title, description, type) VALUES ($1, $2, $3, $4)',
+      [userId, title, description, type]
+    );
+  } catch (error) {
+    console.error('Create notification error:', error);
+  }
 };

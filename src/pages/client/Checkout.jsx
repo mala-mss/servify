@@ -1,6 +1,8 @@
 // src/pages/client/Checkout.jsx
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import axiosInstance from "../../api/axiosInstance";
 
 const PALETTES = {
   dark: {
@@ -16,14 +18,43 @@ const PALETTES = {
 export default function Checkout() {
   const { state } = useLocation();
   const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
   const p = PALETTES.dark;
 
-  const handlePay = () => {
-    // Simulate payment process
-    setTimeout(() => {
-      navigate("/client/payment-success");
-    }, 1500);
+  const handlePay = async () => {
+    setLoading(true);
+    const subtotal = state?.price || 0;
+    const serviceFee = 2.50;
+    const total = subtotal + serviceFee;
+    
+    try {
+      // Actually create the booking in the backend
+      const bookingData = {
+        service_id: state?.serviceId || 1, // Fallback for demo
+        service_provider_id: state?.providerId || 1, // Fallback for demo
+        date: state?.date,
+        time: state?.time,
+        address: state?.address,
+        amount: total
+      };
+
+      const response = await axiosInstance.post("/bookings", bookingData);
+      
+      if (response.data) {
+        // Success! The backend now automatically creates notifications.
+        navigate("/client/payment-success");
+      }
+    } catch (error) {
+      console.error("Payment/Booking failed:", error);
+      alert("Failed to process booking. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const subtotal = state?.price || 0;
+  const serviceFee = 2.50;
+  const total = subtotal + serviceFee;
 
   return (
     <div style={{ ...styles.root, background: p.bg, color: p.text }}>
@@ -38,8 +69,12 @@ export default function Checkout() {
           <div style={styles.summary}>
             <h2 style={styles.sectionTitle}>Booking Summary</h2>
             <div style={{ ...styles.summaryItem, color: p.textMuted }}>
-              <span>Service ID</span>
-              <span style={{ color: p.text }}>{state?.bookingId || "N/A"}</span>
+              <span>Provider</span>
+              <span style={{ color: p.text }}>{state?.providerName || "N/A"}</span>
+            </div>
+            <div style={{ ...styles.summaryItem, color: p.textMuted }}>
+              <span>Service</span>
+              <span style={{ color: p.text }}>{state?.serviceName || "N/A"}</span>
             </div>
             <div style={{ ...styles.summaryItem, color: p.textMuted }}>
               <span>Date & Time</span>
@@ -64,20 +99,29 @@ export default function Checkout() {
           <div style={styles.totalBox}>
             <div style={styles.totalRow}>
               <span>Subtotal</span>
-              <span>$30.00</span>
+              <span>${subtotal.toFixed(2)}</span>
             </div>
             <div style={styles.totalRow}>
               <span>Service Fee</span>
-              <span>$2.50</span>
+              <span>${serviceFee.toFixed(2)}</span>
             </div>
             <div style={{ ...styles.totalRow, fontSize: 20, fontWeight: 700, marginTop: 12 }}>
               <span>Total</span>
-              <span style={{ color: p.primary }}>$32.50</span>
+              <span style={{ color: p.primary }}>${total.toFixed(2)}</span>
             </div>
           </div>
 
-          <button onClick={handlePay} style={{ ...styles.payBtn, background: p.primary }}>
-            Pay $32.50
+          <button 
+            disabled={loading}
+            onClick={handlePay} 
+            style={{ 
+              ...styles.payBtn, 
+              background: p.primary,
+              opacity: loading ? 0.7 : 1,
+              cursor: loading ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {loading ? "Processing..." : `Pay $${total.toFixed(2)}`}
           </button>
         </motion.div>
       </div>

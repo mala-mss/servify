@@ -1,23 +1,48 @@
-import React from 'react';
+// src/pages/provider/MyServices.tsx
+import React, { useState, useEffect } from 'react';
 import { useTheme } from "../../context/ThemeContext";
+import axiosInstance from "../../api/axiosInstance";
 
 interface Service {
-  id: string;
+  id_service: number;
   name: string;
   description: string;
-  price: string;
-  unit: string;
-  category: string;
+  base_price: string;
+  category_name: string;
 }
-
-const MOCK_SERVICES: Service[] = [
-  { id: "1", name: "Elderly Care", description: "Professional medical and personal support for seniors.", price: "2,500", unit: "hour", category: "Medical" },
-  { id: "2", name: "Babysitting", description: "Experienced child care and educational activities.", price: "1,800", unit: "hour", category: "Childcare" },
-  { id: "3", name: "Home Cleaning", description: "Deep cleaning and organization for residential spaces.", price: "1,200", unit: "hour", category: "Housework" },
-];
 
 export default function MyServices() {
   const { palette: p } = useTheme();
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchMyServices = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get("/providers/my-services");
+      if (response.data.success) {
+        setServices(response.data.services);
+      }
+    } catch (error) {
+      console.error("Failed to fetch my services:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyServices();
+  }, []);
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm("Are you sure you want to remove this service from your profile?")) return;
+    try {
+      await axiosInstance.delete(`/providers/my-services/${id}`);
+      fetchMyServices();
+    } catch (error) {
+      console.error("Failed to delete service:", error);
+    }
+  };
 
   const cardStyle: React.CSSProperties = {
     background: p.cardBg,
@@ -72,62 +97,66 @@ export default function MyServices() {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "20px" }}>
-        {MOCK_SERVICES.map((service) => (
-          <div 
-            key={service.id} 
-            style={cardStyle}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = "rgba(47,176,188,.3)";
-              e.currentTarget.style.transform = "translateY(-4px)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = p.border;
-              e.currentTarget.style.transform = "translateY(0)";
-            }}
-          >
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <span style={{ 
-                fontSize: "10px", 
-                fontWeight: 600, 
-                letterSpacing: "1px", 
-                textTransform: "uppercase", 
-                color: p.primary,
-                background: "rgba(47,176,188,.1)",
-                padding: "4px 8px",
-                borderRadius: "4px"
-              }}>
-                {service.category}
-              </span>
-              <div style={{ display: "flex", alignItems: "baseline", gap: "2px" }}>
-                <span style={{ fontFamily: "'Instrument Serif', serif", fontSize: "24px", color: p.text }}>{service.price}</span>
-                <span style={{ fontSize: "12px", color: p.textMuted }}> DZD/{service.unit}</span>
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px', color: p.textMuted }}>Loading your services...</div>
+      ) : services.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '80px', background: p.cardBg, border: `1px dashed ${p.border}`, borderRadius: 12 }}>
+            <p style={{ color: p.textMuted, marginBottom: 20 }}>You haven't listed any services yet.</p>
+            <button style={{ ...primaryButtonStyle, width: "auto" }} onClick={() => window.location.href = '/provider/add-service'}>Add your first service</button>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "20px" }}>
+          {services.map((service) => (
+            <div 
+              key={service.id_service} 
+              style={cardStyle}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "rgba(47,176,188,.3)";
+                e.currentTarget.style.transform = "translateY(-4px)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = p.border;
+                e.currentTarget.style.transform = "translateY(0)";
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <span style={{ 
+                  fontSize: "10px", 
+                  fontWeight: 600, 
+                  letterSpacing: "1px", 
+                  textTransform: "uppercase", 
+                  color: p.primary,
+                  background: "rgba(47,176,188,.1)",
+                  padding: "4px 8px",
+                  borderRadius: "4px"
+                }}>
+                  {service.category_name}
+                </span>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "2px" }}>
+                  <span style={{ fontFamily: "'Instrument Serif', serif", fontSize: "24px", color: p.text }}>{service.base_price}</span>
+                  <span style={{ fontSize: "12px", color: p.textMuted }}> DZD</span>
+                </div>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: "18px", fontWeight: 500, color: p.text, marginBottom: "8px" }}>{service.name}</h3>
+                <p style={{ fontSize: "14px", color: p.textMuted, lineHeight: "1.5", minHeight: "63px" }}>{service.description}</p>
+              </div>
+
+              <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+                <button 
+                  style={{ ...ghostButtonStyle, color: "#f87171" }}
+                  onClick={() => handleDelete(service.id_service)}
+                  onMouseEnter={(e) => e.currentTarget.style.background = "rgba(248,113,113,.05)"}
+                  onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                >
+                  Remove Service
+                </button>
               </div>
             </div>
-
-            <div>
-              <h3 style={{ fontSize: "18px", fontWeight: 500, color: p.text, marginBottom: "8px" }}>{service.name}</h3>
-              <p style={{ fontSize: "14px", color: p.textMuted, lineHeight: "1.5", minHeight: "63px" }}>{service.description}</p>
-            </div>
-
-            <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
-              <button 
-                style={ghostButtonStyle}
-                onClick={() => window.location.href = `/provider/edit-service/${service.id}`}
-              >
-                Edit Service
-              </button>
-              <button 
-                style={{ ...ghostButtonStyle, color: "#f87171" }}
-                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(248,113,113,.05)"}
-                onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

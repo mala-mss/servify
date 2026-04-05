@@ -1,34 +1,53 @@
 // src/pages/provider/Dashboard.tsx
+import { useState, useEffect } from "react";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { Link } from "react-router-dom";
+import axiosInstance from "../../api/axiosInstance";
 
 // ── Types ──
-type JobStatus = "confirmed" | "in_progress" | "completed" | "pending";
+type JobStatus = "confirmed" | "in_progress" | "completed" | "pending" | "cancelled";
 
 const STATUS_BADGE: Record<JobStatus, { label: string; color: string; bg: string }> = {
   confirmed:  { label: "Confirmed",    color: "#2FB0BC", bg: "rgba(47,176,188,.1)"  },
   in_progress:{ label: "In progress",  color: "#a78bfa", bg: "rgba(167,139,250,.1)" },
   completed:  { label: "Completed",    color: "#4ade80", bg: "rgba(74,222,128,.1)"  },
   pending:    { label: "Pending",      color: "#fb923c", bg: "rgba(251,146,60,.1)"  },
+  cancelled:  { label: "Cancelled",    color: "#f87171", bg: "rgba(248,113,113,.1)" },
 };
-
-// ── Mock data — replace with API calls ──
-const TODAYS_JOBS = [
-  { id: 1, client: "Sara M.",  service: "Babysitting",   time: "09:00", status: "in_progress" as JobStatus },
-  { id: 2, client: "Amine B.", service: "Elder Care",    time: "13:00", status: "confirmed"   as JobStatus },
-  { id: 3, client: "Nadia K.", service: "Home Cleaning", time: "16:30", status: "confirmed"   as JobStatus },
-];
-
-const NEW_REQUESTS = [
-  { id: 1, client: "Leila H.", service: "Super Nanny",  when: "Tomorrow 10:00", dur: "3h" },
-  { id: 2, client: "Omar T.",  service: "Pickup",        when: "Mon 08:30",      dur: "1h" },
-  { id: 3, client: "Fatima Z.",service: "Elderly Care",  when: "Tue 14:00",      dur: "4h" },
-];
 
 export default function Dashboard() {
   const { palette: p, mode } = useTheme();
   const { user } = useAuth();
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get("/providers/dashboard");
+      if (response.data.success) {
+        setData(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const handleAction = async (id: number, status: string) => {
+    try {
+      await axiosInstance.put(`/bookings/${id}/status`, { status });
+      fetchDashboardData(); // Refresh data
+    } catch (error) {
+      console.error(`Failed to ${status} booking:`, error);
+    }
+  };
 
   const cardStyle: React.CSSProperties = {
     background: p.cardBg,
@@ -38,6 +57,18 @@ export default function Dashboard() {
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
     position: "relative",
     overflow: "hidden",
+  };
+
+  if (loading) {
+    return <div style={{ padding: 40, textAlign: 'center', color: p.textMuted }}>Loading dashboard...</div>;
+  }
+
+  const stats = data?.stats || {
+    todayJobsCount: 0,
+    pendingRequestsCount: 0,
+    totalEarnings: 0,
+    rating: 0,
+    reviewCount: 0
   };
 
   return (
@@ -75,17 +106,17 @@ export default function Dashboard() {
           Welcome back, {user?.name?.split(' ')[0] || 'Provider'}
         </h1>
         <p style={{ fontSize: 14, color: p.textMuted }}>
-          You have <span style={{ color: p.primary, fontWeight: 500 }}>3 jobs</span> scheduled for today and <span style={{ color: "#fb923c", fontWeight: 500 }}>3 new requests</span>.
+          You have <span style={{ color: p.primary, fontWeight: 500 }}>{stats.todayJobsCount} jobs</span> scheduled for today and <span style={{ color: "#fb923c", fontWeight: 500 }}>{stats.pendingRequestsCount} new requests</span>.
         </p>
       </div>
 
       {/* STATS ROW */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 32 }}>
         {[
-          { icon: "▣", label: "Today's Jobs",      val: "3",   sub: "2 upcoming · 1 active",  color: p.primary },
-          { icon: "◎", label: "Pending Requests",  val: "3",   sub: "Requires action",        color: "#fb923c" },
-          { icon: "◈", label: "Month Earnings",    val: "24k", sub: "DZD · +12% vs last mo", color: p.secondary },
-          { icon: "◉", label: "Avg Rating",        val: "4.8", sub: "From 31 reviews",        color: "#facc15" },
+          { icon: "▣", label: "Today's Jobs",      val: stats.todayJobsCount,   sub: "Upcoming activities",  color: p.primary },
+          { icon: "◎", label: "Pending Requests",  val: stats.pendingRequestsCount,   sub: "Requires action",        color: "#fb923c" },
+          { icon: "◈", label: "Total Earnings",    val: `${stats.totalEarnings} DZD`, sub: "From completed jobs", color: p.secondary },
+          { icon: "◉", label: "Avg Rating",        val: stats.rating || "0.0", sub: `From ${stats.reviewCount || 0} reviews`,        color: "#facc15" },
         ].map((s) => (
           <div key={s.label} className="stat-card" style={cardStyle}>
             <div style={{ 
@@ -96,7 +127,7 @@ export default function Dashboard() {
               {s.icon}
             </div>
             <div style={{ fontSize: 11, color: p.textMuted, letterSpacing: 1, textTransform: "uppercase", marginBottom: 8, fontWeight: 500 }}>{s.label}</div>
-            <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 36, lineHeight: 1, marginBottom: 8, color: p.text }}>{s.val}</div>
+            <div style={{ fontFamily: "'Instrument Serif', serif", fontSize: 32, lineHeight: 1, marginBottom: 8, color: p.text }}>{s.val}</div>
             <div style={{ fontSize: 12, color: p.textMuted }}>{s.sub}</div>
           </div>
         ))}
@@ -111,18 +142,20 @@ export default function Dashboard() {
             <Link to="/provider/schedule" style={{ fontSize: 12, color: p.primary, fontWeight: 500 }}>View full schedule</Link>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {TODAYS_JOBS.map((job) => {
-              const s = STATUS_BADGE[job.status];
+            {data?.todaysJobs.length === 0 ? (
+              <div style={{ ...cardStyle, textAlign: 'center', color: p.textMuted, fontSize: 14 }}>No jobs scheduled for today</div>
+            ) : data?.todaysJobs.map((job: any) => {
+              const s = STATUS_BADGE[job.status as JobStatus] || STATUS_BADGE.pending;
               return (
-                <div key={job.id} className="job-card" style={{ ...cardStyle, padding: "16px 20px", cursor: "pointer" }}>
+                <div key={job.id_booking} className="job-card" style={{ ...cardStyle, padding: "16px 20px", cursor: "pointer" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: p.text }}>{job.client}</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: p.text }}>{job.client_name}</span>
                     <span style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 20, color: s.color, background: s.bg, textTransform: "uppercase", letterSpacing: 0.5 }}>{s.label}</span>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, color: p.textMuted }}>
                     <span style={{ display: "flex", alignItems: "center", gap: 4 }}>🕒 {job.time}</span>
                     <span style={{ width: 4, height: 4, borderRadius: "50%", background: p.border }} />
-                    <span>{job.service}</span>
+                    <span>{job.service_name}</span>
                   </div>
                 </div>
               );
@@ -139,20 +172,30 @@ export default function Dashboard() {
             </Link>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {NEW_REQUESTS.map((r) => (
-              <div key={r.id} style={{ ...cardStyle, padding: "16px 20px" }}>
+            {data?.pendingRequests.length === 0 ? (
+              <div style={{ ...cardStyle, textAlign: 'center', color: p.textMuted, fontSize: 14 }}>No new requests</div>
+            ) : data?.pendingRequests.map((r: any) => (
+              <div key={r.id_booking} style={{ ...cardStyle, padding: "16px 20px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: p.text }}>{r.client}</span>
-                  <span style={{ fontSize: 12, color: p.primary, fontWeight: 500 }}>{r.dur}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: p.text }}>{r.client_name}</span>
+                  <span style={{ fontSize: 12, color: p.primary, fontWeight: 500 }}>{r.amount} DZD</span>
                 </div>
                 <div style={{ fontSize: 13, color: p.textMuted, marginBottom: 16 }}>
-                  {r.service} · {r.when}
+                  {r.service_name} · {new Date(r.date).toLocaleDateString()} at {r.time}
                 </div>
                 <div style={{ display: "flex", gap: 10 }}>
-                  <button className="action-btn accept-btn" style={{ flex: 1, padding: "8px", background: "rgba(74,222,128,.1)", border: "1px solid rgba(74,222,128,.2)", borderRadius: 10, fontSize: 13, color: "#4ade80", cursor: "pointer", fontWeight: 600 }}>
+                  <button 
+                    onClick={() => handleAction(r.id_booking, 'confirmed')}
+                    className="action-btn accept-btn" 
+                    style={{ flex: 1, padding: "8px", background: "rgba(74,222,128,.1)", border: "1px solid rgba(74,222,128,.2)", borderRadius: 10, fontSize: 13, color: "#4ade80", cursor: "pointer", fontWeight: 600 }}
+                  >
                     Accept
                   </button>
-                  <button className="action-btn decline-btn" style={{ padding: "8px 16px", background: "rgba(248,113,113,.05)", border: "1px solid rgba(248,113,113,.15)", borderRadius: 10, fontSize: 13, color: "#f87171", cursor: "pointer", fontWeight: 500 }}>
+                  <button 
+                    onClick={() => handleAction(r.id_booking, 'cancelled')}
+                    className="action-btn decline-btn" 
+                    style={{ padding: "8px 16px", background: "rgba(248,113,113,.05)", border: "1px solid rgba(248,113,113,.15)", borderRadius: 10, fontSize: 13, color: "#f87171", cursor: "pointer", fontWeight: 500 }}
+                  >
                     Decline
                   </button>
                 </div>

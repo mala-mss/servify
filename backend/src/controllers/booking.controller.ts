@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { query } from '../db';
 import { AuthRequest } from '../middleware/auth';
+import { createNotificationInternal } from './notification.controller';
 
 export const getBookingStats = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.userId;
@@ -81,6 +82,29 @@ export const createBooking = async (req: AuthRequest, res: Response): Promise<vo
       [bookingId, amount, 'unpaid']
     );
 
+    // Get provider user_id
+    const providerResult = await query('SELECT user_id FROM service_provider WHERE id = $1', [service_provider_id]);
+    const providerUserId = providerResult.rows[0].user_id;
+
+    // Get service name
+    const serviceResult = await query('SELECT name FROM service WHERE id_service = $1', [service_id]);
+    const serviceName = serviceResult.rows[0].name;
+
+    // Create notifications
+    await createNotificationInternal(
+      userId!, 
+      'Booking Confirmed', 
+      `You have successfully booked ${serviceName} for ${date} at ${time}.`, 
+      'booking'
+    );
+
+    await createNotificationInternal(
+      providerUserId, 
+      'New Job Request', 
+      `A new request for ${serviceName} has been received for ${date} at ${time}.`, 
+      'booking'
+    );
+
     res.status(201).json({
       message: 'Booking created successfully',
       booking: booking.rows[0]
@@ -106,8 +130,29 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response): Prom
       return;
     }
 
+    const booking = result.rows[0];
+
+    // Get related user IDs for notifications
+    const clientResult = await query('SELECT user_id FROM client WHERE id_client = $1', [booking.client_id]);
+    const providerResult = await query('SELECT user_id FROM service_provider WHERE id = $1', [booking.service_provider_id]);
+    
+    if (clientResult.rows.length > 0 && providerResult.rows.length > 0) {
+      const clientUserId = clientResult.rows[0].user_id;
+      const providerUserId = providerResult.rows[0].user_id;
+
+      // Notify based on status change
+      if (status === 'completed') {
+        await createNotificationInternal(clientUserId, 'Service Completed', 'Your service has been marked as completed. Please leave a review!', 'booking');
+        await createNotificationInternal(providerUserId, 'Job Finished', 'You have successfully completed the job.', 'booking');
+      } else if (status === 'cancelled') {
+        await createNotificationInternal(clientUserId, 'Booking Cancelled', 'The booking has been cancelled.', 'booking');
+        await createNotificationInternal(providerUserId, 'Job Cancelled', 'The job has been cancelled.', 'booking');
+      }
+    }
+
     res.json({ message: 'Booking updated successfully', booking: result.rows[0] });
   } catch (error: any) {
+    console.error('Update booking status error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };

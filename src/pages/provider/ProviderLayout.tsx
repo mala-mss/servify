@@ -1,10 +1,12 @@
-// src/components/provider/ProviderLayout.tsx
+// src/pages/provider/ProviderLayout.tsx
 // Wrap all provider pages with this layout
 // Usage in AppRouter: <Route element={<ProviderLayout />}> ... </Route>
 
+import { useState, useEffect } from "react";
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
+import axiosInstance from "../../api/axiosInstance";
 
 const NAV = [
   {
@@ -38,6 +40,25 @@ export default function ProviderLayout() {
   const { palette: p, mode, toggle } = useTheme();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [hasUnread, setHasUnread] = useState(false);
+
+  useEffect(() => {
+    const fetchUnread = async () => {
+      try {
+        const response = await axiosInstance.get("/notifications");
+        if (response.data.success) {
+          setHasUnread(response.data.unreadCount > 0);
+        }
+      } catch (error) {
+        console.error("Failed to fetch unread notifications:", error);
+      }
+    };
+    if (user) fetchUnread();
+    
+    // Poll for notifications every 30 seconds
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   const sbStyle: React.CSSProperties = {
     width: 220, background: mode === "dark" ? "#111" : "#EDF4F4",
@@ -85,11 +106,15 @@ export default function ProviderLayout() {
                 >
                   <span style={{ fontSize: 15, width: 18, textAlign: "center", flexShrink: 0 }}>{item.icon}</span>
                   <span style={{ flex: 1 }}>{item.label}</span>
-                  {item.badge && (
+                  {item.label === "Notifications" && hasUnread ? (
+                    <span style={{ background: p.primary, color: "#fff", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999 }}>
+                      New
+                    </span>
+                  ) : item.badge ? (
                     <span style={{ background: p.primary, color: "#fff", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999 }}>
                       {item.badge}
                     </span>
-                  )}
+                  ) : null}
                 </NavLink>
               ))}
             </div>
@@ -124,7 +149,7 @@ export default function ProviderLayout() {
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <button onClick={() => navigate("/provider/notifications")} style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${p.border}`, background: p.cardBg, cursor: "pointer", fontSize: 14, color: p.textMuted, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
               ◌
-              <span style={{ position: "absolute", top: 6, right: 6, width: 6, height: 6, borderRadius: "50%", background: p.primary, border: `1.5px solid ${p.bg}` }} />
+              {hasUnread && <span style={{ position: "absolute", top: 6, right: 6, width: 6, height: 6, borderRadius: "50%", background: p.primary, border: `1.5px solid ${p.bg}` }} />}
             </button>
             <button onClick={toggle} style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${p.border}`, background: p.cardBg, cursor: "pointer", fontSize: 14, color: p.textMuted, display: "flex", alignItems: "center", justifyContent: "center" }}>
               {mode === "dark" ? "☽" : "☀"}

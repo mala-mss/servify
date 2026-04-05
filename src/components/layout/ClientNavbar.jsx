@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import DiscordSearch from "../common/DiscordSearch";
 import axiosInstance from "../../api/axiosInstance";
@@ -27,6 +28,7 @@ const PALETTES = {
 
 export default function ClientNavbar({ theme = "dark", onThemeToggle, onSearch }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [showNotif, setShowNotif] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const notifRef = useRef(null);
@@ -81,7 +83,12 @@ export default function ClientNavbar({ theme = "dark", onThemeToggle, onSearch }
         {/* Links & Actions */}
         <div style={styles.navRight}>
           <div style={styles.navLinks}>
-            <a href="/client/browse" style={{ ...styles.navLink, color: p.textMuted }}>Explore</a>
+            <button
+              onClick={() => navigate('/client/browse')}
+              style={{ ...styles.navLink, color: p.textMuted, background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600 }}
+            >
+              Explore
+            </button>
             <a href="/client/my-bookings" style={{ ...styles.navLink, color: p.textMuted }}>My Bookings</a>
             
             <div style={{ position: "relative" }} ref={notifRef}>

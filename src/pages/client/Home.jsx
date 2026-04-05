@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BOOKINGS, INITIAL_NOTIFICATIONS } from "../../utils/mockData";
 import axiosInstance from "../../api/axiosInstance";
 import ClientNavbar from "../../components/layout/ClientNavbar";
+import BookingModal from "../../components/common/BookingModal";
+import BookingFlow from "../../components/client/BookingFlow";
 
 // Mock hook — replace with: import { useAuth } from '@/context/AuthContext'
 const useAuth = () => ({ user: { name: "malak" } });
@@ -184,6 +186,8 @@ export default function Home() {
   const [bookings, setBookings] = useState(BOOKINGS);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [filteredProviders, setFilteredProviders] = useState(FEATURED_PROVIDERS);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState(null);
   const notifRef = useRef(null);
 
   const p = PALETTES[theme];
@@ -194,21 +198,20 @@ export default function Home() {
       try {
         const response = await axiosInstance.get("/users/providers/search");
         if (response.data.success) {
-          const mapped = response.data.providers.map(p => ({
-            id: p.provider_id,
-            name: p.name,
-            service: p.services?.[0] || "General Provider",
-            rating: p.rating || 0,
-            reviews: p.review_count || 0,
-            img: p.name[0],
-            location: p.location || "Unknown",
-            price: p.price_per_hour || 0,
-            experience: `${p.years_of_exp || 0} years`,
-            bio: p.bio || "No bio available.",
+          const mapped = response.data.providers.map(p_item => ({
+            id: p_item.provider_id,
+            name: p_item.name,
+            service: p_item.services?.[0] || "General Provider",
+            rating: p_item.rating || 0,
+            reviews: p_item.review_count || 0,
+            img: p_item.name[0],
+            location: p_item.location || "Unknown",
+            price: p_item.price_per_hour || 0,
+            experience: `${p_item.years_of_exp || 0} years`,
+            bio: p_item.bio || "No bio available.",
             availability: "Available Now",
-            tags: p.categories || []
-          }));
-          setFilteredProviders(mapped);
+            tags: p_item.categories || []
+          }));          setFilteredProviders(mapped);
         }
       } catch (error) {
         console.error("Initial fetch failed:", error);
@@ -719,6 +722,23 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      <BookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => { setIsBookingModalOpen(false); setSelectedService(null); }}
+        theme={theme}
+        title="Book a Service"
+      >
+        <BookingFlow
+          initialServiceId={selectedService?.id_service}
+          initialServiceName={selectedService?.name}
+          theme={theme}
+          onComplete={(booking) => {
+            console.log("Booking completed:", booking);
+          }}
+          onClose={() => { setIsBookingModalOpen(false); setSelectedService(null); }}
+        />
+      </BookingModal>
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');

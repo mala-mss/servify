@@ -5,6 +5,8 @@ import authRoutes from './routes/auth.routes';
 import serviceRoutes from './routes/service.routes';
 import bookingRoutes from './routes/booking.routes';
 import userRoutes from './routes/user.routes';
+import notificationRoutes from './routes/notification.routes';
+import providerRoutes from './routes/provider.routes';
 import pool from './db';
 
 dotenv.config();
@@ -28,6 +30,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/services', serviceRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/providers', providerRoutes);
 
 // Health check
 app.get('/api/health', async (_req, res) => {

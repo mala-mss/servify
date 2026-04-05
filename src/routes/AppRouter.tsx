@@ -12,8 +12,11 @@ import ResetPassword from '../pages/auth/ResetPassword';
 // Client Pages
 import Home from '../pages/client/Home';
 import BrowseServices from '../pages/client/BrowseServices';
-import ServiceDetails from '../pages/client/ServiceDetails'; 
+import BrowseProviders from '../pages/client/BrowseProviders';
+import ServiceDetails from '../pages/client/ServiceDetails';
 import BookingRequest from '../pages/client/BookingRequest';
+import ProviderDetail from '../pages/client/ProviderDetail';
+import AllProviders from '../pages/client/AllProviders';
 import BookingConfirm from '../pages/client/BookingConfirm';
 import MyBooking from '../pages/client/MyBooking';
 import BookingDetail from '../pages/client/BookingDetail';
@@ -123,8 +126,11 @@ const AppRouter: React.FC = () => {
         <Route element={<ClientLayout />}>
           <Route path="/client/home" element={<Home />} />
           <Route path="/client/browse" element={<BrowseServices />} />
+          <Route path="/client/browse-providers" element={<BrowseProviders />} />
+          <Route path="/client/providers" element={<AllProviders />} />
           <Route path="/client/services/:id" element={<ServiceDetails />} />
           <Route path="/client/booking-request" element={<BookingRequest />} />
+          <Route path="/client/provider/:id" element={<ProviderDetail />} />
           <Route path="/client/booking-confirm" element={<BookingConfirm />} />
           <Route path="/client/my-bookings" element={<MyBooking />} />
           <Route path="/client/bookings/:id" element={<BookingDetail />} />

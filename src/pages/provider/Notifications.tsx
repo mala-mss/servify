@@ -1,16 +1,58 @@
 // src/pages/provider/Notifications.tsx
+import { useState, useEffect } from "react";
 import { useTheme } from "@/context/ThemeContext";
+import axiosInstance from "../../api/axiosInstance";
 
 export default function Notifications() {
   const { palette: p } = useTheme();
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const notifications = [
-    { id: 1, type: "booking", title: "New Job Request", desc: "Leila H. requested 'Super Nanny' service for tomorrow.", time: "2 mins ago", isNew: true },
-    { id: 2, type: "payment", title: "Payment Received", desc: "You received 4,500 DZD for your service with Amine B.", time: "4 hours ago", isNew: true },
-    { id: 3, type: "review", title: "New Review", desc: "Sara M. left a 5-star review: 'Excellent service, highly recommend!'", time: "Yesterday", isNew: false },
-    { id: 4, type: "system", title: "Profile Verified", desc: "Your identity documents have been successfully verified.", time: "2 days ago", isNew: false },
-    { id: 5, type: "booking", title: "Booking Confirmed", desc: "Nadia K. confirmed the booking for Friday, Oct 25.", time: "3 days ago", isNew: false },
-  ];
+  const fetchNotifications = async () => {
+    try {
+      const response = await axiosInstance.get("/notifications");
+      if (response.data.success) {
+        setNotifications(response.data.notifications);
+      }
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
+
+  const markAllAsRead = async () => {
+    try {
+      await axiosInstance.put("/notifications/mark-all-as-read");
+      fetchNotifications();
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
+  };
+
+  const handleNotificationClick = async (id: number) => {
+    try {
+      await axiosInstance.put(`/notifications/${id}/mark-as-read`);
+      fetchNotifications();
+    } catch (error) {
+      console.error("Failed to mark notification as read:", error);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff/60000)} mins ago`;
+    if (diff < 86400000) return `${Math.floor(diff/3600000)} hours ago`;
+    return date.toLocaleDateString();
+  };
 
   const cardStyle: React.CSSProperties = {
     background: p.cardBg,
@@ -37,66 +79,75 @@ export default function Notifications() {
           <h1 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 32, color: p.text, fontWeight: 400, marginBottom: 8 }}>Notifications</h1>
           <p style={{ color: p.textMuted, fontSize: 14 }}>Stay updated with your latest activities and requests.</p>
         </div>
-        <button style={{
-          background: "none",
-          border: `1px solid ${p.border}`,
-          color: p.text,
-          borderRadius: 8,
-          padding: "8px 16px",
-          fontSize: 13,
-          cursor: "pointer"
-        }}>
-          Mark all as read
-        </button>
+        {notifications.length > 0 && (
+          <button 
+            onClick={markAllAsRead}
+            style={{
+              background: "none",
+              border: `1px solid ${p.border}`,
+              color: p.text,
+              borderRadius: 8,
+              padding: "8px 16px",
+              fontSize: 13,
+              cursor: "pointer"
+            }}
+          >
+            Mark all as read
+          </button>
+        )}
       </div>
 
       <div style={cardStyle}>
-        {notifications.map((n, idx) => {
-          const info = getIcon(n.type);
-          return (
-            <div key={n.id} style={{
-              display: "flex",
-              gap: 16,
-              padding: "20px 24px",
-              borderBottom: idx === notifications.length - 1 ? "none" : `1px solid ${p.border}`,
-              background: n.isNew ? "rgba(47,176,188,.03)" : "transparent",
-              transition: "background .2s",
-              cursor: "pointer",
-              position: "relative"
-            }}>
-              {n.isNew && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: p.primary }} />}
-              
-              <div style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: `${info.color}15`,
-                color: info.color,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 18,
-                flexShrink: 0
-              }}>
-                {info.icon}
-              </div>
-
-              <div style={{ flex: 1 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-                  <div style={{ fontSize: 15, fontWeight: 500, color: p.text }}>{n.title}</div>
-                  <div style={{ fontSize: 11, color: p.textMuted }}>{n.time}</div>
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: p.textMuted }}>Loading...</div>
+        ) : notifications.length === 0 ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: p.textMuted }}>No notifications</div>
+        ) : (
+          notifications.map((n: any, idx) => {
+            const info = getIcon(n.type);
+            return (
+              <div key={n.id} 
+                onClick={() => handleNotificationClick(n.id)}
+                style={{
+                  display: "flex",
+                  gap: 16,
+                  padding: "20px 24px",
+                  borderBottom: idx === notifications.length - 1 ? "none" : `1px solid ${p.border}`,
+                  background: !n.is_read ? "rgba(47,176,188,.03)" : "transparent",
+                  transition: "background .2s",
+                  cursor: "pointer",
+                  position: "relative",
+                  opacity: n.is_read ? 0.7 : 1
+                }}
+              >
+                {!n.is_read && <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: p.primary }} />}
+                
+                <div style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 10,
+                  background: `${info.color}15`,
+                  color: info.color,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 18,
+                  flexShrink: 0
+                }}>
+                  {info.icon}
                 </div>
-                <div style={{ fontSize: 13, color: p.textMuted, lineHeight: 1.5 }}>{n.desc}</div>
+
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+                    <div style={{ fontSize: 15, fontWeight: 500, color: p.text }}>{n.title}</div>
+                    <div style={{ fontSize: 11, color: p.textMuted }}>{formatDate(n.created_at)}</div>
+                  </div>
+                  <div style={{ fontSize: 13, color: p.textMuted, lineHeight: 1.5 }}>{n.description}</div>
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
-      
-      <div style={{ textAlign: "center", marginTop: 24 }}>
-        <button style={{ background: "none", border: "none", color: p.primary, fontSize: 13, fontWeight: 500, cursor: "pointer" }}>
-          Load older notifications
-        </button>
+            );
+          })
+        )}
       </div>
     </div>
   );
