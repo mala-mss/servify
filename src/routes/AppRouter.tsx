@@ -163,24 +163,21 @@ const AppRouter: React.FC = () => {
           <Route path="/provider/notifications" element={<ProviderNotifications />} />
         </Route>
       </Route>
-
-      {/* Protected Admin Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-        <Route element={<AdminLayout />}>
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/approvals" element={<PendingApprovals />} />
-          <Route path="/admin/users" element={<ManageUsers />} />
-          <Route path="/admin/users/:id" element={<UserDetail />} />
-          <Route path="/admin/bookings" element={<ManageBookings />} />
-          <Route path="/admin/bookings/:id" element={<AdminBookingDetail />} />
-          <Route path="/admin/services" element={<ManageServices />} />
-          <Route path="/admin/categories" element={<ManageCategories />} />
-          <Route path="/admin/reports" element={<Reports />} />
-          <Route path="/admin/reports/:id" element={<ReportDetail />} />
-          <Route path="/admin/analytics" element={<Analytics />} />
-          <Route path="/admin/settings" element={<Settings />} />
-        </Route>
-      </Route>
+    {/* Admin Routes - No Auth Required */}
+      <Route element={<AdminLayout />}>
+  <Route path="/admin/dashboard" element={<AdminDashboard />} />
+  <Route path="/admin/approvals" element={<PendingApprovals />} />
+  <Route path="/admin/users" element={<ManageUsers />} />
+  <Route path="/admin/users/:id" element={<UserDetail />} />
+  <Route path="/admin/bookings" element={<ManageBookings />} />
+  <Route path="/admin/bookings/:id" element={<AdminBookingDetail />} />
+  <Route path="/admin/services" element={<ManageServices />} />
+  <Route path="/admin/categories" element={<ManageCategories />} />
+  <Route path="/admin/reports" element={<Reports />} />
+  <Route path="/admin/reports/:id" element={<ReportDetail />} />
+  <Route path="/admin/analytics" element={<Analytics />} />
+  <Route path="/admin/settings" element={<Settings />} />
+</Route>
 
       {/* Protected Authorized Routes */}
       <Route element={<ProtectedRoute allowedRoles={['authorized']} />}>
