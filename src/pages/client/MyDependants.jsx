@@ -1,38 +1,8 @@
 // src/pages/client/MyDependants.jsx
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Mock hooks
-const useAuth = () => ({ user: { name: "Yassine" } });
-
-const PALETTES = {
-  dark: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#0e0e0e",
-    cardBg: "rgba(255,255,255,0.02)",
-    text: "#e8e6e0",
-    textMuted: "rgba(232,230,224,0.5)",
-    border: "rgba(255,255,255,0.06)",
-    navBg: "rgba(14,14,14,0.85)",
-    glow: "rgba(47,176,188,0.04)",
-    grid: "rgba(255,255,255,0.02)"
-  },
-  light: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#F8FBFB",
-    cardBg: "#FFFFFF",
-    text: "#2C3E50",
-    textMuted: "rgba(44,62,80,0.5)",
-    border: "#E0E7E7",
-    navBg: "rgba(248,251,251,0.85)",
-    glow: "rgba(47,176,188,0.06)",
-    grid: "#E0E7E7"
-  }
-};
+import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 
 const DEPENDANTS = [
   { id: 1, name: "Sofia Bouderba", relation: "Daughter", age: "6 years", notes: "Allergic to peanuts", avatar: "S" },
@@ -55,18 +25,14 @@ const itemVariants = {
 
 export default function MyDependants() {
   const { user } = useAuth();
-  const [theme, setTheme] = useState("dark");
+  const { mode: theme, palette: p, toggle: toggleTheme } = useTheme();
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-
-  const p = PALETTES[theme];
 
   useEffect(() => {
     const handle = (e) => setMousePos({ x: e.clientX, y: e.clientY });
     window.addEventListener("mousemove", handle);
     return () => window.removeEventListener("mousemove", handle);
   }, []);
-
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   return (
     <div style={{ ...styles.root, background: p.bg, color: p.text }}>

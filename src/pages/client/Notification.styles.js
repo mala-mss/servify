@@ -1,34 +1,5 @@
 // src/pages/client/Notification.styles.js
 
-export const PALETTES = {
-  dark: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#0e0e0e",
-    cardBg: "rgba(255,255,255,0.02)",
-    text: "#e8e6e0",
-    textMuted: "rgba(232,230,224,0.5)",
-    border: "rgba(255,255,255,0.06)",
-    navBg: "rgba(14,14,14,0.85)",
-    glow: "rgba(47,176,188,0.04)",
-    grid: "rgba(255,255,255,0.02)"
-  },
-  light: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#F8FBFB",
-    cardBg: "#FFFFFF",
-    text: "#2C3E50",
-    textMuted: "rgba(44,62,80,0.5)",
-    border: "#E0E7E7",
-    navBg: "rgba(248,251,251,0.85)",
-    glow: "rgba(47,176,188,0.06)",
-    grid: "#E0E7E7"
-  }
-};
-
 export const styles = {
   root: { minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", position: "relative" },
   bgGrid: { position: "absolute", inset: 0, backgroundSize: "40px 40px", zIndex: 0, pointerEvents: "none" },

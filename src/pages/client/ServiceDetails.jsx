@@ -2,31 +2,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-
-const PALETTES = {
-  dark: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#0e0e0e",
-    cardBg: "rgba(255,255,255,0.02)",
-    text: "#e8e6e0",
-    textMuted: "rgba(232,230,224,0.5)",
-    border: "rgba(255,255,255,0.06)",
-    glow: "rgba(47,176,188,0.04)"
-  },
-  light: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#F8FBFB",
-    cardBg: "#FFFFFF",
-    text: "#2C3E50",
-    textMuted: "rgba(44,62,80,0.5)",
-    border: "#E0E7E7",
-    glow: "rgba(47,176,188,0.06)"
-  }
-};
+import { useTheme } from "../../context/ThemeContext";
 
 const SERVICE_DATA = {
   id: 1,
@@ -53,8 +29,7 @@ const SERVICE_DATA = {
 export default function ServiceDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const [theme] = useState("dark"); // Assuming dark theme for consistency
-  const p = PALETTES[theme];
+  const { mode: theme, palette: p } = useTheme();
 
   const handleBookNow = () => {
     navigate(`/client/booking-request/${id}`);
@@ -101,12 +76,12 @@ export default function ServiceDetails() {
             </div>
 
             <div style={styles.rightCol}>
-              <div style={{ ...styles.stickyCard, background: p.cardBg, borderColor: p.border }}>
+              <div style={{ ...styles.stickyCard, background: p.cardBg, borderColor: p.border, boxShadow: theme === 'dark' ? "0 20px 40px rgba(0,0,0,0.4)" : "0 20px 40px rgba(0,0,0,0.05)" }}>
                 <div style={styles.cardHeader}>
                   <h1 style={{ ...styles.title, color: p.text }}>{SERVICE_DATA.name}</h1>
                   <div style={styles.ratingRow}>
                     <span style={{ color: "#FFD700" }}>★</span>
-                    <span style={{ fontWeight: 600, marginLeft: 4 }}>{SERVICE_DATA.rating}</span>
+                    <span style={{ fontWeight: 600, marginLeft: 4, color: p.text }}>{SERVICE_DATA.rating}</span>
                     <span style={{ color: p.textMuted, marginLeft: 8 }}>({SERVICE_DATA.reviews} reviews)</span>
                   </div>
                 </div>
@@ -117,14 +92,14 @@ export default function ServiceDetails() {
                 </div>
 
                 <div style={{ ...styles.providerBox, borderTopColor: p.border, borderBottomColor: p.border }}>
-                  <div style={{ ...styles.avatar, background: p.primary }}>{SERVICE_DATA.provider[0]}</div>
+                  <div style={{ ...styles.avatar, background: p.primary, color: "#fff" }}>{SERVICE_DATA.provider[0]}</div>
                   <div>
-                    <div style={{ fontSize: 15, fontWeight: 600 }}>{SERVICE_DATA.provider}</div>
+                    <div style={{ fontSize: 15, fontWeight: 600, color: p.text }}>{SERVICE_DATA.provider}</div>
                     <div style={{ fontSize: 12, color: p.textMuted }}>Verified Provider</div>
                   </div>
                 </div>
 
-                <button onClick={handleBookNow} style={{ ...styles.bookBtn, background: p.primary }}>
+                <button onClick={handleBookNow} style={{ ...styles.bookBtn, background: p.primary, color: "#fff" }}>
                   Book Now
                 </button>
                 
@@ -161,13 +136,13 @@ const styles = {
   featureList: { listStyle: "none" },
   featureItem: { fontSize: 15, marginBottom: 12, display: "flex", alignItems: "center" },
   rightCol: { position: "relative" },
-  stickyCard: { position: "sticky", top: 100, padding: 32, borderRadius: 24, border: "1px solid", boxShadow: "0 20px 40px rgba(0,0,0,0.1)" },
+  stickyCard: { position: "sticky", top: 100, padding: 32, borderRadius: 24, border: "1px solid" },
   cardHeader: { marginBottom: 24 },
   title: { fontSize: 28, fontWeight: 600, marginBottom: 8, lineHeight: "1.2" },
   ratingRow: { display: "flex", alignItems: "center", fontSize: 14 },
   priceRow: { display: "flex", alignItems: "baseline", gap: 12, marginBottom: 32 },
   providerBox: { display: "flex", alignItems: "center", gap: 16, padding: "24px 0", borderTop: "1px solid", borderBottom: "1px solid", marginBottom: 32 },
-  avatar: { width: 44, height: 44, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 600 },
-  bookBtn: { width: "100%", padding: "18px", borderRadius: 12, border: "none", color: "#fff", fontSize: 16, fontWeight: 600, cursor: "pointer", marginBottom: 20 },
+  avatar: { width: 44, height: 44, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600 },
+  bookBtn: { width: "100%", padding: "18px", borderRadius: 12, border: "none", fontSize: 16, fontWeight: 600, cursor: "pointer", marginBottom: 20 },
   guarantee: { textAlign: "center", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center" }
 };

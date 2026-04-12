@@ -1,51 +1,19 @@
 // src/pages/client/AllProviders.jsx
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useOutletContext } from "react-router-dom";
 import axiosInstance from "../../api/axiosInstance";
 import { useAuth } from "../../context/AuthContext";
-import ClientNavbar from "../../components/layout/ClientNavbar";
+import { useTheme } from "../../context/ThemeContext";
 import BookingModal from "../../components/common/BookingModal";
 import BookingFlow from "../../components/client/BookingFlow";
-
-const PALETTES = {
-  dark: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#0e0e0e",
-    cardBg: "rgba(255,255,255,0.02)",
-    text: "#e8e6e0",
-    textMuted: "rgba(232,230,224,0.5)",
-    border: "rgba(255,255,255,0.06)",
-    navBg: "rgba(14,14,14,0.85)",
-    glow: "rgba(47,176,188,0.04)",
-    grid: "rgba(255,255,255,0.02)"
-  },
-  light: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#F8FBFB",
-    cardBg: "#FFFFFF",
-    text: "#2C3E50",
-    textMuted: "rgba(44,62,80,0.5)",
-    border: "#E0E7E7",
-    navBg: "rgba(248,251,251,0.85)",
-    glow: "rgba(47,176,188,0.06)",
-    grid: "#E0E7E7"
-  }
-};
-
-const CITIES = ["All", "Algiers", "Oran", "Constantine", "Annaba", "Sétif", "Mila", "Ferdjioua"];
-const SERVICE_TYPES = ["All", "Cleaning", "Plumbing", "Electrical", "Childcare", "Gardening", "Tutoring"];
 
 export default function AllProviders() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-
-  const [theme, setTheme] = useState("dark");
+  const { mode: theme, palette: p } = useTheme();
+  const { toggle } = useOutletContext();
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [providers, setProviders] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -60,8 +28,6 @@ export default function AllProviders() {
   // Booking modal
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState(null);
-
-  const p = PALETTES[theme];
 
   useEffect(() => {
     const handle = (e) => setMousePos({ x: e.clientX, y: e.clientY });
@@ -130,13 +96,6 @@ export default function AllProviders() {
     <div style={{ ...styles.root, background: p.bg, color: p.text }}>
       <div style={{ ...styles.bgGrid, backgroundImage: theme === 'dark' ? `radial-gradient(circle at 2px 2px, rgba(255,255,255,0.02) 1px, transparent 0)` : `radial-gradient(circle at 2px 2px, ${p.grid} 1px, transparent 0)` }} />
       <div style={{ ...styles.glow, left: mousePos.x - 300, top: mousePos.y - 300, background: `radial-gradient(circle, ${p.glow} 0%, transparent 70%)` }} />
-
-      {/* Navigation */}
-      <ClientNavbar
-        theme={theme}
-        onThemeToggle={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-        onSearch={(query) => setSearchQuery(query)}
-      />
 
       <main style={styles.main}>
         {/* Header */}

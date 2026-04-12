@@ -1,9 +1,10 @@
 // src/pages/client/Notification.jsx
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { PALETTES, styles } from "./Notification.styles";
+import { styles } from "./Notification.styles";
 import axiosInstance from "../../api/axiosInstance";
 import { useAuth } from "../../context/AuthContext";
+import { useTheme } from "../../context/ThemeContext";
 
 const getTypeStyles = (type) => {
   switch (type) {
@@ -52,11 +53,9 @@ const GlowBackground = ({ p }) => {
 
 export default function Notification() {
   const { user } = useAuth();
-  const [theme] = useState("dark"); // Assuming dark theme for now as per styles
+  const { mode: theme, palette: p } = useTheme();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const p = PALETTES[theme];
 
   const fetchNotifications = async () => {
     try {
@@ -139,7 +138,7 @@ export default function Notification() {
                 return (
                   <motion.div 
                     key={n.id} 
-                    whileHover={{ x: 5, background: theme === 'dark' ? "rgba(255,255,255,0.04)" : "rgba(47,176,188,0.02)" }}
+                    whileHover={{ x: 5, background: theme === 'dark' ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)" }}
                     onClick={() => handleNotificationClick(n.id)}
                     style={{ 
                       ...styles.notifRow, 

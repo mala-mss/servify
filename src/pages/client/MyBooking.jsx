@@ -1,39 +1,11 @@
 // src/pages/client/MyBooking.jsx
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useOutletContext } from "react-router-dom";
+import { useTheme } from "../../context/ThemeContext";
 import { BOOKINGS, INITIAL_NOTIFICATIONS } from "../../utils/mockData";
 
-// Mock hooks
-const useAuth = () => ({ user: { name: "Yassine" } });
-
-const PALETTES = {
-  dark: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#0e0e0e",
-    cardBg: "rgba(255,255,255,0.02)",
-    text: "#e8e6e0",
-    textMuted: "rgba(232,230,224,0.5)",
-    border: "rgba(255,255,255,0.06)",
-    navBg: "rgba(14,14,14,0.85)",
-    glow: "rgba(47,176,188,0.04)",
-    grid: "rgba(255,255,255,0.02)"
-  },
-  light: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#F8FBFB",
-    cardBg: "#FFFFFF",
-    text: "#2C3E50",
-    textMuted: "rgba(44,62,80,0.5)",
-    border: "#E0E7E7",
-    navBg: "rgba(248,251,251,0.85)",
-    glow: "rgba(47,176,188,0.06)",
-    grid: "#E0E7E7"
-  }
-};
+import { useAuth } from "../../context/AuthContext";
 
 const getStatusStyle = (status) => {
   switch (status) {
@@ -79,7 +51,8 @@ const MouseGlow = ({ p }) => {
 
 export default function MyBooking() {
   const { user } = useAuth();
-  const [theme, setTheme] = useState("dark");
+  const { mode: theme, palette: p } = useTheme();
+  const { toggle } = useOutletContext();
   const [showNotif, setShowNotif] = useState(false);
   const [bookings, setBookings] = useState(BOOKINGS);
   const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
@@ -92,7 +65,6 @@ export default function MyBooking() {
   const [editData, setEditData] = useState({ date: "2026-03-26", time: "10:00" });
 
   const notifRef = useRef(null);
-  const p = PALETTES[theme];
 
   // Update dynamic notifications based on booking status
   useEffect(() => {

@@ -1,13 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { BOOKINGS, INITIAL_NOTIFICATIONS } from "../../utils/mockData";
+import { useOutletContext } from "react-router-dom";
+import { useTheme } from "../../context/ThemeContext";
+import { BOOKINGS } from "../../utils/mockData";
 import axiosInstance from "../../api/axiosInstance";
-import ClientNavbar from "../../components/layout/ClientNavbar";
 import BookingModal from "../../components/common/BookingModal";
 import BookingFlow from "../../components/client/BookingFlow";
-
-// Mock hook — replace with: import { useAuth } from '@/context/AuthContext'
-const useAuth = () => ({ user: { name: "malak" } });
 
 const SERVICES = ["cleaning", "plumbing", "electrical", "childcare", "gardening", "tutoring"];
 
@@ -27,7 +25,7 @@ const CATEGORIES = [
   { id: 6, name: "Tutoring", icon: "◆", desc: "Academic, music, languages", count: 35 },
 ];
 
-const CITIES = ["Algiers", "Oran", "Constantine", "Annaba", "Sétif", "Mila","ferdjioua"];
+const CITIES = ["Algiers", "Oran", "Constantine", "Annaba", "Sétif", "Mila", "ferdjioua"];
 
 const FAQS = [
   { q: "How do I pay for a service?", a: "You can pay securely via credit card or digital wallet directly through our platform after the service is completed." },
@@ -36,43 +34,43 @@ const FAQS = [
 ];
 
 const FEATURED_PROVIDERS = [
-  { 
-    id: 1, name: "Alex Johnson", service: "Plumbing", rating: 4.9, reviews: 124, img: "A", 
+  {
+    id: 1, name: "Alex Johnson", service: "Plumbing", rating: 4.9, reviews: 124, img: "A",
     location: "Algiers", price: 45, experience: "8 years", bio: "Expert in home plumbing repairs and installations.",
     availability: "Available Now", tags: ["Emergency", "Licensed"]
   },
-  { 
-    id: 2, name: "Maria Garcia", service: "Cleaning", rating: 4.8, reviews: 89, img: "M", 
+  {
+    id: 2, name: "Maria Garcia", service: "Cleaning", rating: 4.8, reviews: 89, img: "M",
     location: "Oran", price: 30, experience: "5 years", bio: "Eco-friendly deep cleaning specialist for modern homes.",
     availability: "Available Tomorrow", tags: ["Eco-friendly", "Detail-oriented"]
   },
-  { 
-    id: 3, name: "David Chen", service: "Electrical", rating: 5.0, reviews: 56, img: "D", 
+  {
+    id: 3, name: "David Chen", service: "Electrical", rating: 5.0, reviews: 56, img: "D",
     location: "Constantine", price: 55, experience: "12 years", bio: "Master electrician specializing in smart home wiring.",
     availability: "Available Now", tags: ["Expert", "Certified"]
   },
-  { 
-    id: 4, name: "Sarah Miller", service: "Childcare", rating: 4.9, reviews: 210, img: "S", 
+  {
+    id: 4, name: "Sarah Miller", service: "Childcare", rating: 4.9, reviews: 210, img: "S",
     location: "Algiers", price: 25, experience: "6 years", bio: "Patient and creative childcare provider with CPR certification.",
     availability: "Available Now", tags: ["CPR Certified", "Multilingual"]
   },
-  { 
-    id: 5, name: "Robert Wilson", service: "Gardening", rating: 4.7, reviews: 45, img: "R", 
+  {
+    id: 5, name: "Robert Wilson", service: "Gardening", rating: 4.7, reviews: 45, img: "R",
     location: "Sétif", price: 35, experience: "4 years", bio: "Passionate about landscaping and sustainable garden design.",
     availability: "Available Today", tags: ["Landscaping", "Sustainable"]
   },
-  { 
-    id: 6, name: "Elena Petrova", service: "Tutoring", rating: 5.0, reviews: 78, img: "E", 
+  {
+    id: 6, name: "Elena Petrova", service: "Tutoring", rating: 5.0, reviews: 78, img: "E",
     location: "Mila", price: 40, experience: "7 years", bio: "Experienced mathematics tutor focusing on high school students.",
     availability: "Available Now", tags: ["Math Expert", "Flexible Schedule"]
   },
-  { 
-    id: 7, name: "Karim Brahimi", service: "Plumbing", rating: 4.6, reviews: 32, img: "K", 
+  {
+    id: 7, name: "Karim Brahimi", service: "Plumbing", rating: 4.6, reviews: 32, img: "K",
     location: "Ferdjioua", price: 40, experience: "10 years", bio: "Fast and reliable service for all types of plumbing issues.",
     availability: "Available Now", tags: ["Reliable", "Fast"]
   },
-  { 
-    id: 8, name: "Lila Mansouri", service: "Cleaning", rating: 4.9, reviews: 156, img: "L", 
+  {
+    id: 8, name: "Lila Mansouri", service: "Cleaning", rating: 4.9, reviews: 156, img: "L",
     location: "Algiers", price: 35, experience: "6 years", bio: "Professional cleaning with attention to every corner.",
     availability: "Available Today", tags: ["Professional", "Thorough"]
   },
@@ -83,37 +81,8 @@ const TESTIMONIALS = [
   { id: 2, text: "Servify saved my weekend when our pipes burst. Truly professional service.", author: "James L.", role: "Tenant" },
 ];
 
-const PALETTES = {
-  dark: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#0e0e0e",
-    cardBg: "rgba(255,255,255,0.02)",
-    text: "#e8e6e0",
-    textMuted: "rgba(232,230,224,0.5)",
-    border: "rgba(255,255,255,0.06)",
-    navBg: "rgba(14,14,14,0.85)",
-    glow: "rgba(47,176,188,0.04)",
-    grid: "rgba(255,255,255,0.02)"
-  },
-  light: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#F8FBFB",
-    cardBg: "#FFFFFF",
-    text: "#2C3E50",
-    textMuted: "rgba(44,62,80,0.5)",
-    border: "#E0E7E7",
-    navBg: "rgba(248,251,251,0.85)",
-    glow: "rgba(47,176,188,0.06)",
-    grid: "#E0E7E7"
-  }
-};
-
 const getStatusStyle = (status, theme) => {
-  const isDark = theme === 'dark';
+  const isDark = theme === "dark";
   const colors = {
     upcoming:  { color: "#6BC8B2", bg: isDark ? "rgba(107,200,178,0.15)" : "rgba(107,200,178,0.1)" },
     completed: { color: "#2FB0BC", bg: isDark ? "rgba(47,176,188,0.15)" : "rgba(47,176,188,0.1)" },
@@ -127,11 +96,11 @@ const getStatusStyle = (status, theme) => {
 // ── ANIMATION VARIANTS ──
 const sectionVariants = {
   hidden: { opacity: 0, y: 60 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
-    transition: { 
-      duration: 0.8, 
+    transition: {
+      duration: 0.8,
       ease: [0.21, 0.45, 0.32, 0.9],
       staggerChildren: 0.15
     }
@@ -140,8 +109,8 @@ const sectionVariants = {
 
 const itemVariants = {
   hidden: { opacity: 0, y: 30 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: { duration: 0.6, ease: "easeOut" }
   }
@@ -149,10 +118,10 @@ const itemVariants = {
 
 const viewportConfig = { once: false, amount: 0.2 };
 
-function AccordionItem({ faq, theme }) {
+function AccordionItem({ faq }) {
   const [isOpen, setIsOpen] = useState(false);
-  const p = PALETTES[theme];
-  
+  const { palette: p } = useTheme();
+
   return (
     <div style={{ ...styles.faqItem, borderBottomColor: p.border }}>
       <div style={styles.faqHeader} onClick={() => setIsOpen(!isOpen)}>
@@ -161,7 +130,7 @@ function AccordionItem({ faq, theme }) {
       </div>
       <AnimatePresence>
         {isOpen && (
-          <motion.div 
+          <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -176,21 +145,15 @@ function AccordionItem({ faq, theme }) {
 }
 
 export default function Home() {
-  const { user } = useAuth();
-  const [theme, setTheme] = useState("dark"); // Default to dark
+  const { mode: theme, palette: p } = useTheme();
+  const { toggle } = useOutletContext();
   const [serviceIndex, setServiceIndex] = useState(0);
   const [fading, setFading] = useState(false);
   const [search, setSearch] = useState("");
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [showNotif, setShowNotif] = useState(false);
   const [bookings, setBookings] = useState(BOOKINGS);
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
   const [filteredProviders, setFilteredProviders] = useState(FEATURED_PROVIDERS);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
-  const notifRef = useRef(null);
-
-  const p = PALETTES[theme];
 
   // Fetch initial providers
   useEffect(() => {
@@ -211,7 +174,8 @@ export default function Home() {
             bio: p_item.bio || "No bio available.",
             availability: "Available Now",
             tags: p_item.categories || []
-          }));          setFilteredProviders(mapped);
+          }));
+          setFilteredProviders(mapped);
         }
       } catch (error) {
         console.error("Initial fetch failed:", error);
@@ -222,8 +186,7 @@ export default function Home() {
 
   const handleSearch = async (query, results) => {
     setSearch(query);
-    
-    // Parse the query for filters
+
     const params = {};
     const parts = query.split(" ");
     parts.forEach(part => {
@@ -232,16 +195,14 @@ export default function Home() {
       if (part.startsWith("category:")) params.category = part.split(":")[1];
     });
 
-    // If no specific filters, use general search if query exists
     const isGeneralSearch = !params.location && !params.service && !params.category && query.trim() !== "";
 
     try {
       const response = await axiosInstance.get("/users/providers/search", {
         params: isGeneralSearch ? { service: query } : params
       });
-      
+
       if (response.data.success) {
-        // Map backend data to frontend card structure
         const mapped = response.data.providers.map(p => ({
           id: p.provider_id,
           name: p.name,
@@ -253,56 +214,20 @@ export default function Home() {
           price: p.price_per_hour || 0,
           experience: `${p.years_of_exp || 0} years`,
           bio: p.bio || "No bio available.",
-          availability: "Available Now", // Mocked for now
+          availability: "Available Now",
           tags: p.categories || []
         }));
         setFilteredProviders(mapped);
-        
-        // Scroll to results if searching
+
         if (query.trim() !== "") {
-          document.getElementById('caregivers-section')?.scrollIntoView({ behavior: 'smooth' });
+          document.getElementById("caregivers-section")?.scrollIntoView({ behavior: "smooth" });
         }
       }
     } catch (error) {
       console.error("Search failed:", error);
-      // Fallback to local filtering if API fails
       setFilteredProviders(results.length > 0 ? results : FEATURED_PROVIDERS);
     }
   };
-
-  // Update dynamic notifications based on booking status
-  useEffect(() => {
-    const paymentNotifs = [];
-    bookings.forEach(bk => {
-      if (!bk.paidFirst) {
-        paymentNotifs.push({
-          id: `pay1-${bk.id}`,
-          title: "Deposit Due",
-          desc: `Initial 50% ($${bk.price/2}) for ${bk.service} is pending.`,
-          time: "Action required",
-          unread: true,
-          type: "payment",
-          bookingId: bk.id
-        });
-      }
-      if (bk.status === "completed" && !bk.paidSecond) {
-        paymentNotifs.push({
-          id: `pay2-${bk.id}`,
-          title: "Balance Due",
-          desc: `Final 50% ($${bk.price/2}) for ${bk.service} is ready to pay.`,
-          time: "Service completed",
-          unread: true,
-          type: "payment",
-          bookingId: bk.id
-        });
-      }
-    });
-
-    setNotifications(prev => {
-      const filtered = prev.filter(n => n.type !== "payment");
-      return [...paymentNotifs, ...filtered];
-    });
-  }, [bookings]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -315,43 +240,18 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    const handle = (e) => setMousePos({ x: e.clientX, y: e.clientY });
-    window.addEventListener("mousemove", handle);
-    return () => window.removeEventListener("mousemove", handle);
-  }, []);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
-        setShowNotif(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
-
   return (
     <div style={{ ...styles.root, background: p.bg, color: p.text }}>
       {/* Background Texture */}
-      <div style={{ 
-        ...styles.bgGrid, 
-        backgroundImage: theme === 'dark' 
+      <div style={{
+        ...styles.bgGrid,
+        backgroundImage: theme === "dark"
           ? `radial-gradient(circle at 2px 2px, rgba(255,255,255,0.02) 1px, transparent 0)`
           : `radial-gradient(circle at 2px 2px, ${p.grid} 1px, transparent 0)`
       }} />
-      
-      <div style={{ 
-        ...styles.glow, 
-        left: mousePos.x - 300, 
-        top: mousePos.y - 300,
-        background: `radial-gradient(circle, ${p.glow} 0%, transparent 70%)`
-      }} />
 
       {/* ── HERO ── */}
-      <motion.section 
+      <motion.section
         style={styles.hero}
         initial="hidden"
         animate="visible"
@@ -374,11 +274,29 @@ export default function Home() {
         <motion.p style={{ ...styles.subline, color: p.textMuted }} variants={itemVariants}>
           Find trusted professionals in your area. Describe what you need, pick a time, and we handle the rest.
         </motion.p>
+
+        {/* Search bar (from doc2, inside hero) */}
+        <motion.form
+          style={{ ...styles.searchRow, background: p.cardBg, borderColor: p.border }}
+          variants={itemVariants}
+          onSubmit={(e) => { e.preventDefault(); handleSearch(search, []); }}
+        >
+          <div style={styles.searchWrap}>
+            <span style={{ ...styles.searchIcon, color: p.border }}>⌕</span>
+            <input
+              style={{ ...styles.searchInput, color: p.text }}
+              placeholder="What service do you need?"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <button type="submit" style={{ ...styles.searchBtn, background: p.primary }}>Find a provider</button>
+        </motion.form>
       </motion.section>
 
       {/* ── STATS ── */}
-      <motion.section 
-        style={{ ...styles.statsSection, borderColor: p.border }} 
+      <motion.section
+        style={{ ...styles.statsSection, borderColor: p.border }}
         initial="hidden"
         whileInView="visible"
         viewport={viewportConfig}
@@ -393,8 +311,8 @@ export default function Home() {
       </motion.section>
 
       {/* ── HOW IT WORKS ── */}
-      <motion.section 
-        style={styles.section} 
+      <motion.section
+        style={styles.section}
         initial="hidden"
         whileInView="visible"
         viewport={viewportConfig}
@@ -419,8 +337,8 @@ export default function Home() {
       </motion.section>
 
       {/* ── CATEGORIES ── */}
-      <motion.section 
-        style={styles.section} 
+      <motion.section
+        style={styles.section}
         initial="hidden"
         whileInView="visible"
         viewport={viewportConfig}
@@ -437,7 +355,7 @@ export default function Home() {
               key={cat.id}
               variants={itemVariants}
               style={{ ...styles.categoryCard, background: p.cardBg, borderColor: p.border }}
-              whileHover={{ y: -8, borderColor: p.primary, background: theme === 'dark' ? "rgba(47,176,188,0.05)" : "rgba(47,176,188,0.03)" }}
+              whileHover={{ y: -8, borderColor: p.primary, background: theme === "dark" ? "rgba(47,176,188,0.05)" : "rgba(47,176,188,0.03)" }}
             >
               <div style={{ ...styles.catIcon, color: p.primary }}>{cat.icon}</div>
               <div style={{ ...styles.catName, color: p.text }}>{cat.name}</div>
@@ -449,8 +367,8 @@ export default function Home() {
       </motion.section>
 
       {/* ── COVERAGE ── */}
-      <motion.section 
-        style={styles.section} 
+      <motion.section
+        style={styles.section}
         initial="hidden"
         whileInView="visible"
         viewport={viewportConfig}
@@ -468,9 +386,9 @@ export default function Home() {
         </motion.div>
       </motion.section>
 
-      {/* ── AVAILABLE CAREGIVERS ── */}
-      <motion.section 
-        style={styles.section} 
+      {/* ── AVAILABLE CAREGIVERS (full rich cards from doc1) ── */}
+      <motion.section
+        style={styles.section}
         initial="hidden"
         whileInView="visible"
         viewport={viewportConfig}
@@ -483,34 +401,38 @@ export default function Home() {
           </h2>
           <span style={{ fontSize: 13, color: p.textMuted }}>{filteredProviders.length} experts found</span>
         </motion.div>
-        
+
         {filteredProviders.length > 0 ? (
           <div style={styles.providerGrid}>
             {filteredProviders.map((p_item) => (
-              <motion.div 
-                key={p_item.id} 
-                style={{ ...styles.providerCard, background: p.cardBg, borderColor: p.border }} 
-                variants={itemVariants} 
-                whileHover={{ y: -8, borderColor: p.primary, boxShadow: `0 12px 30px ${theme === 'dark' ? 'rgba(0,0,0,0.4)' : 'rgba(0,0,0,0.05)'}` }}
+              <motion.div
+                key={p_item.id}
+                style={{ ...styles.providerCard, background: p.cardBg, borderColor: p.border }}
+                variants={itemVariants}
+                whileHover={{ y: -8, borderColor: p.primary, boxShadow: `0 12px 30px ${theme === "dark" ? "rgba(0,0,0,0.4)" : "rgba(0,0,0,0.05)"}` }}
               >
                 <div style={styles.providerCardTop}>
-                  <div style={{ ...styles.providerImg, background: theme === 'dark' ? "rgba(47,176,188,0.15)" : "#D6FFF9", color: p.primary }}>
+                  <div style={{ ...styles.providerImg, background: theme === "dark" ? "rgba(47,176,188,0.15)" : "#D6FFF9", color: p.primary }}>
                     {p_item.img}
                   </div>
                   <div style={styles.providerBadgeRow}>
-                    <span style={{ ...styles.availBadge, background: p_item.availability.includes("Now") ? "rgba(107,200,178,0.15)" : "rgba(245,158,11,0.1)", color: p_item.availability.includes("Now") ? "#6BC8B2" : "#F59E0B" }}>
+                    <span style={{
+                      ...styles.availBadge,
+                      background: p_item.availability.includes("Now") ? "rgba(107,200,178,0.15)" : "rgba(245,158,11,0.1)",
+                      color: p_item.availability.includes("Now") ? "#6BC8B2" : "#F59E0B"
+                    }}>
                       ● {p_item.availability}
                     </span>
                   </div>
                 </div>
 
                 <div style={styles.providerInfo}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
                       <div style={{ ...styles.providerName, color: p.text }}>{p_item.name}</div>
                       <div style={{ ...styles.providerService, color: p.primary }}>{p_item.service}</div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
+                    <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 18, fontWeight: 700, color: p.text }}>${p_item.price}</div>
                       <div style={{ fontSize: 10, color: p.textMuted }}>per hour</div>
                     </div>
@@ -528,7 +450,7 @@ export default function Home() {
 
                   <div style={styles.tagRow}>
                     {p_item.tags.map(tag => (
-                      <span key={tag} style={{ ...styles.tag, background: theme === 'dark' ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", color: p.textMuted }}>
+                      <span key={tag} style={{ ...styles.tag, background: theme === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.03)", color: p.textMuted }}>
                         {tag}
                       </span>
                     ))}
@@ -543,13 +465,13 @@ export default function Home() {
             ))}
           </div>
         ) : (
-          <motion.div variants={itemVariants} style={{ textAlign: 'center', padding: '60px 0', color: p.textMuted }}>
+          <motion.div variants={itemVariants} style={{ textAlign: "center", padding: "60px 0", color: p.textMuted }}>
             <div style={{ fontSize: 40, marginBottom: 20 }}>☹</div>
             <h3>No caregivers found matching your search.</h3>
             <p>Try using different filters or search terms.</p>
-            <button 
+            <button
               onClick={() => handleSearch("", FEATURED_PROVIDERS)}
-              style={{ marginTop: 20, background: 'none', border: `1px solid ${p.primary}`, color: p.primary, padding: '10px 24px', borderRadius: 8, cursor: 'pointer' }}
+              style={{ marginTop: 20, background: "none", border: `1px solid ${p.primary}`, color: p.primary, padding: "10px 24px", borderRadius: 8, cursor: "pointer" }}
             >
               Clear all filters
             </button>
@@ -558,37 +480,37 @@ export default function Home() {
       </motion.section>
 
       {/* ── APP PROMO ── */}
-      <motion.section 
-        style={styles.section} 
+      <motion.section
+        style={styles.section}
         initial="hidden"
         whileInView="visible"
         viewport={viewportConfig}
         variants={sectionVariants}
       >
-        <motion.div style={{ 
-          ...styles.appPromoCard, 
-          background: theme === 'dark' ? "rgba(47,176,188,0.05)" : "#D6FFF9",
-          borderColor: theme === 'dark' ? p.border : "#A1E8DC"
+        <motion.div style={{
+          ...styles.appPromoCard,
+          background: theme === "dark" ? "rgba(47,176,188,0.05)" : "#D6FFF9",
+          borderColor: theme === "dark" ? p.border : "#A1E8DC"
         }} variants={itemVariants}>
           <div style={styles.appPromoText}>
             <h2 style={{ ...styles.appPromoTitle, color: p.text }}>Services at your fingertips.</h2>
             <p style={{ ...styles.appPromoSub, color: p.textMuted }}>Download the Servify app for faster bookings and real-time provider tracking.</p>
             <div style={styles.appBtns}>
-              <div style={{ ...styles.appBtn, background: theme === 'dark' ? "rgba(255,255,255,0.05)" : "#FFFFFF", borderColor: p.accent, color: p.text }}>App Store</div>
-              <div style={{ ...styles.appBtn, background: theme === 'dark' ? "rgba(255,255,255,0.05)" : "#FFFFFF", borderColor: p.accent, color: p.text }}>Google Play</div>
+              <div style={{ ...styles.appBtn, background: theme === "dark" ? "rgba(255,255,255,0.05)" : "#FFFFFF", borderColor: p.accent, color: p.text }}>App Store</div>
+              <div style={{ ...styles.appBtn, background: theme === "dark" ? "rgba(255,255,255,0.05)" : "#FFFFFF", borderColor: p.accent, color: p.text }}>Google Play</div>
             </div>
           </div>
           <div style={styles.appPromoPhone}>
-            <div style={{ ...styles.phoneMockup, borderColor: p.text, background: theme === 'dark' ? "#000" : "#fff" }}>
-               <div style={{ ...styles.phoneInner, background: p.border }} />
+            <div style={{ ...styles.phoneMockup, borderColor: p.text, background: theme === "dark" ? "#000" : "#fff" }}>
+              <div style={{ ...styles.phoneInner, background: p.border }} />
             </div>
           </div>
         </motion.div>
       </motion.section>
 
       {/* ── TESTIMONIALS ── */}
-      <motion.section 
-        style={styles.section} 
+      <motion.section
+        style={styles.section}
         initial="hidden"
         whileInView="visible"
         viewport={viewportConfig}
@@ -598,15 +520,15 @@ export default function Home() {
           {TESTIMONIALS.map((t) => (
             <motion.div key={t.id} style={{ ...styles.testimonialCard, background: p.cardBg, borderLeftColor: p.primary }} variants={itemVariants}>
               <p style={{ ...styles.testimonialText, color: p.text }}>"{t.text}"</p>
-              <div style={{ ...styles.testimonialAuthor, color: p.text }}>— {t.author}, <span style={{opacity: 0.5}}>{t.role}</span></div>
+              <div style={{ ...styles.testimonialAuthor, color: p.text }}>— {t.author}, <span style={{ opacity: 0.5 }}>{t.role}</span></div>
             </motion.div>
           ))}
         </div>
       </motion.section>
 
       {/* ── RECENT ACTIVITY ── */}
-      <motion.section 
-        style={styles.section} 
+      <motion.section
+        style={styles.section}
         initial="hidden"
         whileInView="visible"
         viewport={viewportConfig}
@@ -619,8 +541,11 @@ export default function Home() {
           {bookings.map((b) => {
             const s = getStatusStyle(b.status, theme);
             return (
-              <motion.a key={b.id} href="/client/my-bookings" style={{ ...styles.bookingRow, background: p.cardBg, borderColor: p.border }} variants={itemVariants} whileHover={{ background: theme === 'dark' ? "rgba(47,176,188,0.05)" : "rgba(47,176,188,0.03)" }}>
-                <div style={styles.bookingLeft}><span style={{ ...styles.bookingRef, color: p.textMuted }}>{b.id}</span><span style={{ color: p.text }}>{b.service}</span></div>
+              <motion.a key={b.id} href="/client/my-bookings" style={{ ...styles.bookingRow, background: p.cardBg, borderColor: p.border }} variants={itemVariants} whileHover={{ background: theme === "dark" ? "rgba(47,176,188,0.05)" : "rgba(47,176,188,0.03)" }}>
+                <div style={styles.bookingLeft}>
+                  <span style={{ ...styles.bookingRef, color: p.textMuted }}>{b.id}</span>
+                  <span style={{ color: p.text }}>{b.service}</span>
+                </div>
                 <div style={styles.bookingRight}>
                   <span style={{ ...styles.bookingDate, color: p.textMuted }}>{b.date}</span>
                   <span style={{ ...styles.statusBadge, color: s.color, background: s.bg }}>{b.status}</span>
@@ -632,8 +557,8 @@ export default function Home() {
       </motion.section>
 
       {/* ── FAQ ── */}
-      <motion.section 
-        style={styles.section} 
+      <motion.section
+        style={styles.section}
         initial="hidden"
         whileInView="visible"
         viewport={viewportConfig}
@@ -648,8 +573,8 @@ export default function Home() {
       </motion.section>
 
       {/* ── NEWSLETTER ── */}
-      <motion.section 
-        style={styles.section} 
+      <motion.section
+        style={styles.section}
         initial="hidden"
         whileInView="visible"
         viewport={viewportConfig}
@@ -659,24 +584,24 @@ export default function Home() {
           <h3 style={{ ...styles.newsletterTitle, color: p.text }}>Stay updated</h3>
           <p style={{ ...styles.newsletterSub, color: p.textMuted }}>Get the latest home care tips and exclusive professional discounts.</p>
           <div style={styles.newsletterForm}>
-            <input style={{ ...styles.newsletterInput, background: theme === 'dark' ? "rgba(255,255,255,0.03)" : p.bg, borderColor: p.border, color: p.text }} placeholder="your@email.com" />
+            <input style={{ ...styles.newsletterInput, background: theme === "dark" ? "rgba(255,255,255,0.03)" : p.bg, borderColor: p.border, color: p.text }} placeholder="your@email.com" />
             <button style={{ ...styles.newsletterBtn, background: p.primary }}>Join</button>
           </div>
         </motion.div>
       </motion.section>
 
       {/* ── CTA ── */}
-      <motion.section 
-        style={styles.ctaSection} 
+      <motion.section
+        style={styles.ctaSection}
         initial="hidden"
         whileInView="visible"
         viewport={viewportConfig}
         variants={sectionVariants}
       >
-        <motion.div style={{ 
-          ...styles.ctaContent, 
-          background: theme === 'dark' ? "linear-gradient(to bottom, rgba(47,176,188,0.08), transparent)" : "linear-gradient(to bottom, #D6FFF9, #F8FBFB)",
-          borderColor: theme === 'dark' ? "rgba(47,176,188,0.2)" : p.accent
+        <motion.div style={{
+          ...styles.ctaContent,
+          background: theme === "dark" ? "linear-gradient(to bottom, rgba(47,176,188,0.08), transparent)" : "linear-gradient(to bottom, #D6FFF9, #F8FBFB)",
+          borderColor: theme === "dark" ? "rgba(47,176,188,0.2)" : p.accent
         }} variants={itemVariants}>
           <h2 style={{ ...styles.ctaTitle, color: p.text }}>Ready to get started?</h2>
           <p style={{ ...styles.ctaSub, color: p.textMuted }}>Join thousands of homeowners who trust Servify for their daily needs.</p>
@@ -685,14 +610,14 @@ export default function Home() {
       </motion.section>
 
       {/* ── FOOTER ── */}
-      <footer style={{ ...styles.footer, background: theme === 'dark' ? "#0a0a0a" : p.cardBg, borderTopColor: p.border }}>
+      <footer style={{ ...styles.footer, background: theme === "dark" ? "#0a0a0a" : p.cardBg, borderTopColor: p.border }}>
         <div style={styles.footerGrid}>
           <div style={styles.footerBrandCol}>
-             <div style={styles.footerLogo}>
-                <span style={{ ...styles.logoMark, color: p.primary }}>◈</span>
-                <span style={{ ...styles.footerBrandName, color: p.text }}>Servify</span>
-             </div>
-             <p style={{ ...styles.footerTagline, color: p.textMuted }}>The premium platform for home services.</p>
+            <div style={styles.footerLogo}>
+              <span style={{ ...styles.logoMark, color: p.primary }}>◈</span>
+              <span style={{ ...styles.footerBrandName, color: p.text }}>Servify</span>
+            </div>
+            <p style={{ ...styles.footerTagline, color: p.textMuted }}>The premium platform for home services.</p>
           </div>
           <div style={styles.footerLinksCol}>
             <h4 style={{ ...styles.footerColTitle, color: p.primary }}>Platform</h4>
@@ -760,26 +685,8 @@ export default function Home() {
 const styles = {
   root: { minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", position: "relative", transition: "background 0.3s ease, color 0.3s ease" },
   bgGrid: { position: "absolute", inset: 0, backgroundSize: "40px 40px", zIndex: 0, pointerEvents: "none" },
-  glow: { position: "fixed", width: 600, height: 600, borderRadius: "50%", pointerEvents: "none", zIndex: 0, transition: "left 0.8s ease, top 0.8s ease" },
 
-  nav: { position: "sticky", top: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 48px", height: 64, borderBottom: "1px solid", backdropFilter: "blur(12px)", transition: "all 0.3s ease" },
-  navLogo: { display: "flex", alignItems: "center", gap: 10 },
-  logoMark: { fontSize: 20 },
-  logoText: { fontSize: 17, fontWeight: 500, letterSpacing: "-0.3px" },
-  navLinks: { display: "flex", gap: 32 },
-  navLink: { fontSize: 14, fontWeight: 500, transition: "color 0.2s" },
-  navLinkBtn: { background: "none", border: "none", fontSize: 14, fontWeight: 500, transition: "color 0.2s", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, position: "relative" },
-  navNotifDot: { width: 6, height: 6, borderRadius: "50%", position: "absolute", top: -2, right: -8 },
-  navRight: { display: "flex", alignItems: "center", gap: 16 },
-
-  notifDropdown: { position: "absolute", top: "calc(100% + 12px)", right: -100, width: 320, borderRadius: 16, border: "1px solid", padding: "16px 0", zIndex: 1000, boxShadow: "0 20px 40px rgba(0,0,0,0.2)" },
-  notifDropHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0 20px 12px", borderBottom: "1px solid rgba(255,255,255,0.06)", marginBottom: 8 },
-  notifDropList: { maxHeight: 300, overflowY: "auto" },
-  notifDropItem: { padding: "12px 20px", borderBottom: "1px solid rgba(255,255,255,0.04)", transition: "background 0.2s", cursor: "pointer" },
-  notifDropTitleRow: { display: "flex", justifyContent: "space-between", alignItems: "baseline" },
-  themeBtn: { width: 34, height: 34, borderRadius: "50%", border: "1px solid", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, transition: "all 0.3s ease" },
-  avatarBtn: { width: 34, height: 34, borderRadius: "50%", border: "1px solid", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 500 },
-
+  // ── HERO ──
   hero: { position: "relative", zIndex: 1, maxWidth: 860, margin: "0 auto", padding: "140px 48px 100px", textAlign: "center" },
   statusPill: { display: "inline-flex", alignItems: "center", gap: 8, padding: "6px 16px", border: "1px solid", borderRadius: 999, fontSize: 13, marginBottom: 40 },
   statusDot: { width: 7, height: 7, borderRadius: "50%", animation: "pulse 2s infinite" },
@@ -818,12 +725,14 @@ const styles = {
   cityGrid: { display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 10 },
   cityItem: { fontSize: 14, cursor: "pointer", transition: "color 0.2s" },
 
+  // ── PROVIDER CARDS (rich layout from doc1) ──
   providerGrid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 24 },
   providerCard: { display: "flex", flexDirection: "column", padding: "24px", border: "1px solid", borderRadius: 24, transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)", overflow: "hidden" },
   providerCardTop: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 },
-  providerImg: { width: 64, height: 64, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700, shadow: "0 8px 16px rgba(0,0,0,0.1)" },
+  providerImg: { width: 64, height: 64, borderRadius: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: 700 },
   providerBadgeRow: { display: "flex", gap: 8 },
   availBadge: { padding: "4px 10px", borderRadius: 99, fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.5px" },
+  providerInfo: {},
   providerName: { fontSize: 20, fontWeight: 700, marginBottom: 2 },
   providerService: { fontSize: 14, fontWeight: 600, marginBottom: 12 },
   providerMeta: { display: "flex", gap: 12, fontSize: 12, fontWeight: 500, marginBottom: 16 },
@@ -853,6 +762,7 @@ const styles = {
   bookingRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 28px", border: "1px solid", borderRadius: 12, transition: "all 0.3s" },
   bookingLeft: { display: "flex", alignItems: "center", gap: 32 },
   bookingRef: { fontSize: 12, fontFamily: "monospace" },
+  bookingDate: { fontSize: 13 },
   bookingRight: { display: "flex", alignItems: "center", gap: 20 },
   statusBadge: { fontSize: 11, fontWeight: 600, padding: "4px 12px", borderRadius: 999, textTransform: "uppercase" },
 

@@ -69,13 +69,13 @@ import Dashboard from '../pages/Dashboard';
 import Booking from '../pages/Booking';
 
 import ClientNavbar from '../components/layout/ClientNavbar';
+import { useTheme } from '../context/ThemeContext';
 import axiosInstance from '../api/axiosInstance';
 
 const ClientLayout: React.FC = () => {
-  const [theme, setTheme] = React.useState("dark");
-  
+  const { mode: theme, toggle, palette } = useTheme();
+
   const handleSearch = async (query: string) => {
-    // If we are not on home, we might want to redirect to home with query or just log
     console.log("Global search:", query);
     if (window.location.pathname !== '/client/home') {
         window.location.href = `/client/home?search=${encodeURIComponent(query)}`;
@@ -83,13 +83,13 @@ const ClientLayout: React.FC = () => {
   };
 
   return (
-    <div style={{ background: theme === 'dark' ? '#0e0e0e' : '#F8FBFB', minHeight: '100vh' }}>
-      <ClientNavbar 
-        theme={theme} 
-        onThemeToggle={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-        onSearch={handleSearch}
+    <div style={{ background: palette.bg, minHeight: '100vh' }}>
+      <ClientNavbar
+        theme={theme}
+        onThemeToggle={toggle}
+        onSearch={(query: string) => handleSearch(query)}
       />
-      <Outlet context={{ theme }} />
+      <Outlet context={{ theme, toggle, palette }} />
     </div>
   );
 };

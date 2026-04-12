@@ -1,22 +1,12 @@
 // src/pages/client/BookingDetail.jsx
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-
-const PALETTES = {
-  dark: {
-    primary: "#2FB0BC",
-    bg: "#0e0e0e",
-    cardBg: "rgba(255,255,255,0.02)",
-    text: "#e8e6e0",
-    textMuted: "rgba(232,230,224,0.5)",
-    border: "rgba(255,255,255,0.06)"
-  }
-};
+import { useTheme } from "../../context/ThemeContext";
 
 export default function BookingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const p = PALETTES.dark;
+  const { mode: theme, palette: p } = useTheme();
 
   // Mock booking data
   const booking = {
@@ -46,19 +36,19 @@ export default function BookingDetail() {
         >
           <div style={styles.header}>
             <div>
-              <div style={{ ...styles.statusBadge, background: "rgba(107,200,178,0.1)", color: "#6BC8B2" }}>{booking.status}</div>
-              <h1 style={styles.title}>{booking.service}</h1>
+              <div style={{ ...styles.statusBadge, background: theme === 'dark' ? "rgba(107,200,178,0.15)" : "rgba(107,200,178,0.1)", color: "#6BC8B2" }}>{booking.status}</div>
+              <h1 style={{ ...styles.title, color: p.text }}>{booking.service}</h1>
               <p style={{ ...styles.ref, color: p.textMuted }}>Ref: {booking.id}</p>
             </div>
-            <button onClick={() => navigate(`/client/booking-tracker/${booking.id}`)} style={{ ...styles.trackBtn, background: p.primary }}>Track Live</button>
+            <button onClick={() => navigate(`/client/booking-tracker/${booking.id}`)} style={{ ...styles.trackBtn, background: p.primary, color: "#fff" }}>Track Live</button>
           </div>
 
           <div style={{ ...styles.section, borderTopColor: p.border }}>
-            <h2 style={styles.sectionTitle}>Provider Info</h2>
+            <h2 style={{ ...styles.sectionTitle, color: p.textMuted }}>Provider Info</h2>
             <div style={styles.providerRow}>
-              <div style={{ ...styles.avatar, background: p.primary }}>{booking.provider.name[0]}</div>
+              <div style={{ ...styles.avatar, background: p.primary, color: "#fff" }}>{booking.provider.name[0]}</div>
               <div>
-                <div style={{ fontWeight: 600 }}>{booking.provider.name}</div>
+                <div style={{ fontWeight: 600, color: p.text }}>{booking.provider.name}</div>
                 <div style={{ fontSize: 13, color: p.textMuted }}>Rating: {booking.provider.rating} ★</div>
               </div>
               <button style={{ ...styles.contactBtn, borderColor: p.border, color: p.text }}>Message</button>
@@ -66,23 +56,23 @@ export default function BookingDetail() {
           </div>
 
           <div style={{ ...styles.section, borderTopColor: p.border }}>
-            <h2 style={styles.sectionTitle}>Service Details</h2>
+            <h2 style={{ ...styles.sectionTitle, color: p.textMuted }}>Service Details</h2>
             <div style={styles.infoGrid}>
               <div style={styles.infoItem}>
                 <span style={{ color: p.textMuted }}>Date</span>
-                <span>{booking.date}</span>
+                <span style={{ color: p.text }}>{booking.date}</span>
               </div>
               <div style={styles.infoItem}>
                 <span style={{ color: p.textMuted }}>Time</span>
-                <span>{booking.time}</span>
+                <span style={{ color: p.text }}>{booking.time}</span>
               </div>
               <div style={styles.infoItem}>
-                <span style={{ color: p.textMuted }}>Address</span>
-                <span>{booking.address}</span>
+                <span style={{ color: p.textMuted, gridColumn: "span 2" }}>Address</span>
+                <span style={{ color: p.text, gridColumn: "span 2" }}>{booking.address}</span>
               </div>
               <div style={styles.infoItem}>
                 <span style={{ color: p.textMuted }}>Price Paid</span>
-                <span>{booking.price}</span>
+                <span style={{ color: p.text }}>{booking.price}</span>
               </div>
             </div>
           </div>
@@ -106,11 +96,11 @@ const styles = {
   statusBadge: { padding: "6px 12px", borderRadius: 99, fontSize: 11, fontWeight: 700, textTransform: "uppercase", display: "inline-block", marginBottom: 12 },
   title: { fontSize: 32, fontWeight: 600, marginBottom: 4 },
   ref: { fontSize: 14, fontFamily: "monospace" },
-  trackBtn: { padding: "12px 24px", borderRadius: 12, border: "none", color: "#fff", fontWeight: 600, cursor: "pointer" },
+  trackBtn: { padding: "12px 24px", borderRadius: 12, border: "none", fontWeight: 600, cursor: "pointer" },
   section: { padding: "32px 0", borderTop: "1px solid" },
-  sectionTitle: { fontSize: 16, fontWeight: 600, marginBottom: 20, color: "rgba(255,255,255,0.4)" },
+  sectionTitle: { fontSize: 16, fontWeight: 600, marginBottom: 20 },
   providerRow: { display: "flex", alignItems: "center", gap: 16 },
-  avatar: { width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, color: "#fff" },
+  avatar: { width: 48, height: 48, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600 },
   contactBtn: { marginLeft: "auto", padding: "8px 16px", borderRadius: 8, border: "1px solid", background: "none", cursor: "pointer" },
   infoGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24 },
   infoItem: { display: "flex", flexDirection: "column", gap: 4, fontSize: 14 },

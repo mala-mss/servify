@@ -1,39 +1,12 @@
 // src/pages/client/BrowseServices.jsx
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useOutletContext } from "react-router-dom";
+import { useTheme } from "../../context/ThemeContext";
 import axiosInstance from "../../api/axiosInstance";
 import { useAuth } from "../../context/AuthContext";
 import BookingModal from "../../components/common/BookingModal";
 import BookingFlow from "../../components/client/BookingFlow";
-
-const PALETTES = {
-  dark: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#0e0e0e",
-    cardBg: "rgba(255,255,255,0.02)",
-    text: "#e8e6e0",
-    textMuted: "rgba(232,230,224,0.5)",
-    border: "rgba(255,255,255,0.06)",
-    navBg: "rgba(14,14,14,0.85)",
-    glow: "rgba(47,176,188,0.04)",
-    grid: "rgba(255,255,255,0.02)"
-  },
-  light: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#F8FBFB",
-    cardBg: "#FFFFFF",
-    text: "#2C3E50",
-    textMuted: "rgba(44,62,80,0.5)",
-    border: "#E0E7E7",
-    navBg: "rgba(248,251,251,0.85)",
-    glow: "rgba(47,176,188,0.06)",
-    grid: "#E0E7E7"
-  }
-};
 
 const sectionVariants = {
   hidden: { opacity: 0, y: 30 },
@@ -51,7 +24,8 @@ const itemVariants = {
 
 export default function BrowseServices() {
   const { user } = useAuth();
-  const [theme, setTheme] = useState("dark");
+  const { mode: theme, palette: p, toggle } = useTheme();
+  const { toggle: sidebarToggle } = useOutletContext();
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState("all");
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -62,8 +36,6 @@ export default function BrowseServices() {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
   const notifRef = useRef(null);
-
-  const p = PALETTES[theme];
 
   useEffect(() => {
     const handle = (e) => setMousePos({ x: e.clientX, y: e.clientY });
@@ -110,7 +82,7 @@ export default function BrowseServices() {
         <div style={styles.navLinks}>
           <a href="/client/browse" style={{ ...styles.navLink, color: p.primary }}>Browse</a>
           <a href="/client/my-bookings" style={{ ...styles.navLink, color: p.textMuted }}>My bookings</a>
-          <button onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} style={{ background: 'none', border: 'none', color: p.text, cursor: 'pointer' }}>
+          <button onClick={toggle} style={{ background: 'none', border: 'none', color: p.text, cursor: 'pointer' }}>
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>
         </div>

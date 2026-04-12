@@ -3,31 +3,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../context/AuthContext";
 import axiosInstance from "../../api/axiosInstance";
-
-const PALETTES = {
-  dark: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#0e0e0e",
-    cardBg: "rgba(255,255,255,0.02)",
-    text: "#e8e6e0",
-    textMuted: "rgba(232,230,224,0.5)",
-    border: "rgba(255,255,255,0.06)",
-    grid: "rgba(255,255,255,0.02)"
-  },
-  light: {
-    primary: "#2FB0BC",
-    secondary: "#6BC8B2",
-    accent: "#7ED4CA",
-    bg: "#F8FBFB",
-    cardBg: "#FFFFFF",
-    text: "#2C3E50",
-    textMuted: "rgba(44,62,80,0.5)",
-    border: "#E0E7E7",
-    grid: "#E0E7E7"
-  }
-};
+import { useTheme } from "../../context/ThemeContext";
 
 const STR_LEVELS = [
   { w: "20%",  color: "#f87171", label: "Weak"   },
@@ -70,7 +46,7 @@ const itemVariants = {
 
 export default function Profile() {
   const { user, logout } = useAuth();
-  const [theme, setTheme] = useState("dark");
+  const { mode: theme, palette: p } = useTheme();
   const [tab, setTab] = useState("info");
   const [name, setName] = useState(user?.name ?? "");
   const [address, setAddr] = useState(user?.address ?? "");
@@ -92,7 +68,6 @@ export default function Profile() {
   const [depForm, setDepForm] = useState({ name: "", date_of_birth: "", relationship: "" });
   const [authForm, setAuthForm] = useState({ name: "", phone_number: "", national_id: "" });
 
-  const p = PALETTES[theme];
   const strength = getStrength(newPw);
 
   useEffect(() => {
@@ -260,7 +235,7 @@ export default function Profile() {
                   </div>
                   <div style={styles.formFooter}>
                     <button onClick={logout} style={{ ...styles.secondaryBtn, borderColor: p.border, color: p.textMuted }}>Sign out</button>
-                    <button onClick={handleSave} style={{ ...styles.primaryBtn, background: p.primary }}>Save changes</button>
+                    <button onClick={handleSave} style={{ ...styles.primaryBtn, background: p.primary, color: "#fff" }}>Save changes</button>
                   </div>
                 </div>
               )}
@@ -269,7 +244,7 @@ export default function Profile() {
                 <div style={styles.form}>
                   <div style={styles.sectionHeader}>
                     <div style={{ color: p.textMuted, fontSize: 13 }}>Manage your family members or dependants.</div>
-                    <button onClick={() => setShowAddDep(!showAddDep)} style={{ ...styles.primaryBtn, background: p.primary, padding: "10px 20px", fontSize: 13 }}>
+                    <button onClick={() => setShowAddDep(!showAddDep)} style={{ ...styles.primaryBtn, background: p.primary, color: "#fff", padding: "10px 20px", fontSize: 13 }}>
                       {showAddDep ? "Cancel" : "+ Add dependant"}
                     </button>
                   </div>
@@ -281,7 +256,7 @@ export default function Profile() {
                         <input type="date" style={inputStyle} value={depForm.date_of_birth} onChange={(e) => setDepForm({...depForm, date_of_birth: e.target.value})} />
                       </div>
                       <input style={inputStyle} placeholder="Relation (e.g. Daughter, Mother)" value={depForm.relationship} onChange={(e) => setDepForm({...depForm, relationship: e.target.value})} />
-                      <button onClick={handleAddDep} style={{ ...styles.primaryBtn, background: p.primary, alignSelf: "flex-end" }}>Add member</button>
+                      <button onClick={handleAddDep} style={{ ...styles.primaryBtn, background: p.primary, color: "#fff", alignSelf: "flex-end" }}>Add member</button>
                     </motion.div>
                   )}
 
@@ -309,7 +284,7 @@ export default function Profile() {
                 <div style={styles.form}>
                   <div style={styles.sectionHeader}>
                     <div style={{ color: p.textMuted, fontSize: 13 }}>People authorized to book or manage services for you.</div>
-                    <button onClick={() => setShowAddAuth(!showAddAuth)} style={{ ...styles.primaryBtn, background: p.primary, padding: "10px 20px", fontSize: 13 }}>
+                    <button onClick={() => setShowAddAuth(!showAddAuth)} style={{ ...styles.primaryBtn, background: p.primary, color: "#fff", padding: "10px 20px", fontSize: 13 }}>
                       {showAddAuth ? "Cancel" : "+ Add person"}
                     </button>
                   </div>
@@ -321,7 +296,7 @@ export default function Profile() {
                         <input style={inputStyle} placeholder="Phone number" value={authForm.phone_number} onChange={(e) => setAuthForm({...authForm, phone_number: e.target.value})} />
                         <input style={inputStyle} placeholder="National ID" value={authForm.national_id} onChange={(e) => setAuthForm({...authForm, national_id: e.target.value})} />
                       </div>
-                      <button onClick={handleAddAuth} style={{ ...styles.primaryBtn, background: p.primary, alignSelf: "flex-end" }}>Authorize person</button>
+                      <button onClick={handleAddAuth} style={{ ...styles.primaryBtn, background: p.primary, color: "#fff", alignSelf: "flex-end" }}>Authorize person</button>
                     </motion.div>
                   )}
 
@@ -350,7 +325,7 @@ export default function Profile() {
       </div>
 
       <footer style={{ ...styles.footer, background: theme === 'dark' ? "#0a0a0a" : p.cardBg, borderTopColor: p.border }}>
-        <div style={styles.footerBottom, { textAlign: 'center', padding: '40px 0' }}>
+        <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <span style={{ ...styles.footerText, color: p.textMuted }}>© 2026 Servify Inc. All rights reserved.</span>
         </div>
       </footer>
@@ -400,7 +375,7 @@ const styles = {
   relative: { position: "relative" },
   readOnlyTag: { position: "absolute", right: 14, top: "50%", transform: "translateY(-50%)", fontSize: 9, letterSpacing: ".5px", fontWeight: 600 },
   formFooter: { display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 16 },
-  primaryBtn: { padding: "14px 32px", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 500, color: "#fff", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
+  primaryBtn: { padding: "14px 32px", border: "none", borderRadius: 12, fontSize: 15, fontWeight: 500, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
   secondaryBtn: { padding: "14px 24px", background: "transparent", border: "1px solid", borderRadius: 12, fontSize: 14, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
   sectionHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   formBox: { padding: 24, borderRadius: 16, border: "1px solid", display: "flex", flexDirection: "column", gap: 16, marginBottom: 24 },

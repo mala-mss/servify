@@ -3,23 +3,13 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import axiosInstance from "../../api/axiosInstance";
-
-const PALETTES = {
-  dark: {
-    primary: "#2FB0BC",
-    bg: "#0e0e0e",
-    cardBg: "rgba(255,255,255,0.02)",
-    text: "#e8e6e0",
-    textMuted: "rgba(232,230,224,0.5)",
-    border: "rgba(255,255,255,0.06)"
-  }
-};
+import { useTheme } from "../../context/ThemeContext";
 
 export default function Checkout() {
   const { state } = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const p = PALETTES.dark;
+  const { mode: theme, palette: p } = useTheme();
 
   const handlePay = async () => {
     setLoading(true);
@@ -28,10 +18,9 @@ export default function Checkout() {
     const total = subtotal + serviceFee;
     
     try {
-      // Actually create the booking in the backend
       const bookingData = {
-        service_id: state?.serviceId || 1, // Fallback for demo
-        service_provider_id: state?.providerId || 1, // Fallback for demo
+        service_id: state?.serviceId || 1, 
+        service_provider_id: state?.providerId || 1, 
         date: state?.date,
         time: state?.time,
         address: state?.address,
@@ -41,7 +30,6 @@ export default function Checkout() {
       const response = await axiosInstance.post("/bookings", bookingData);
       
       if (response.data) {
-        // Success! The backend now automatically creates notifications.
         navigate("/client/payment-success");
       }
     } catch (error) {
@@ -64,10 +52,10 @@ export default function Checkout() {
           animate={{ opacity: 1, y: 0 }}
           style={{ ...styles.card, background: p.cardBg, borderColor: p.border }}
         >
-          <h1 style={styles.title}>Checkout</h1>
+          <h1 style={{ ...styles.title, color: p.text }}>Checkout</h1>
           
           <div style={styles.summary}>
-            <h2 style={styles.sectionTitle}>Booking Summary</h2>
+            <h2 style={{ ...styles.sectionTitle, color: p.textMuted }}>Booking Summary</h2>
             <div style={{ ...styles.summaryItem, color: p.textMuted }}>
               <span>Provider</span>
               <span style={{ color: p.text }}>{state?.providerName || "N/A"}</span>
@@ -89,23 +77,23 @@ export default function Checkout() {
           <div style={{ ...styles.divider, borderColor: p.border }} />
 
           <div style={styles.payment}>
-            <h2 style={styles.sectionTitle}>Payment Method</h2>
-            <div style={{ ...styles.payMethod, background: "rgba(255,255,255,0.03)", borderColor: p.primary }}>
+            <h2 style={{ ...styles.sectionTitle, color: p.textMuted }}>Payment Method</h2>
+            <div style={{ ...styles.payMethod, background: theme === 'dark' ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderColor: p.primary }}>
               <span>💳 Credit / Debit Card</span>
               <span style={{ fontSize: 12, color: p.primary }}>Selected</span>
             </div>
           </div>
 
           <div style={styles.totalBox}>
-            <div style={styles.totalRow}>
+            <div style={{ ...styles.totalRow, color: p.text }}>
               <span>Subtotal</span>
               <span>${subtotal.toFixed(2)}</span>
             </div>
-            <div style={styles.totalRow}>
+            <div style={{ ...styles.totalRow, color: p.text }}>
               <span>Service Fee</span>
               <span>${serviceFee.toFixed(2)}</span>
             </div>
-            <div style={{ ...styles.totalRow, fontSize: 20, fontWeight: 700, marginTop: 12 }}>
+            <div style={{ ...styles.totalRow, fontSize: 20, fontWeight: 700, marginTop: 12, color: p.text }}>
               <span>Total</span>
               <span style={{ color: p.primary }}>${total.toFixed(2)}</span>
             </div>
@@ -117,6 +105,7 @@ export default function Checkout() {
             style={{ 
               ...styles.payBtn, 
               background: p.primary,
+              color: "#fff",
               opacity: loading ? 0.7 : 1,
               cursor: loading ? 'not-allowed' : 'pointer'
             }}
@@ -130,7 +119,7 @@ export default function Checkout() {
 }
 
 const styles = {
-  root: { minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", padding: 48 },
+  root: { minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", padding: "48px 24px" },
   container: { maxWidth: 500, margin: "0 auto" },
   card: { padding: 40, borderRadius: 24, border: "1px solid" },
   title: { fontSize: 28, fontWeight: 600, marginBottom: 32 },
@@ -142,5 +131,5 @@ const styles = {
   payMethod: { padding: "16px 20px", borderRadius: 12, border: "1px solid", display: "flex", justifyContent: "space-between", alignItems: "center" },
   totalBox: { display: "flex", flexDirection: "column", gap: 8, marginBottom: 32 },
   totalRow: { display: "flex", justifyContent: "space-between", fontSize: 15 },
-  payBtn: { width: "100%", padding: 18, borderRadius: 12, border: "none", color: "#fff", fontSize: 16, fontWeight: 600, cursor: "pointer" }
+  payBtn: { width: "100%", padding: 18, borderRadius: 12, border: "none", fontSize: 16, fontWeight: 600 }
 };
