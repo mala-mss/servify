@@ -1,33 +1,35 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
-interface BookingAttributes {
-  id_booking: number;
+interface BookingRequestAttributes {
+  id: number;
   date: Date;
   time: string;
-  address?: string;
+  duration?: string;
   status: string;
-  client_id: number;
-  service_provider_id: number;
+  client_id_fk: number;
+  service_provider_id_fk: number;
   service_id?: number;
+  document_id?: number;
 }
 
-interface BookingCreationAttributes extends Optional<BookingAttributes, 'id_booking' | 'address' | 'status' | 'service_id'> {}
+interface BookingRequestCreationAttributes extends Optional<BookingRequestAttributes, 'id' | 'duration' | 'status' | 'service_id' | 'document_id'> {}
 
-export class Booking extends Model<BookingAttributes, BookingCreationAttributes> implements BookingAttributes {
-  public id_booking!: number;
+export class BookingRequest extends Model<BookingRequestAttributes, BookingRequestCreationAttributes> implements BookingRequestAttributes {
+  public id!: number;
   public date!: Date;
   public time!: string;
-  public address?: string;
+  public duration?: string;
   public status!: string;
-  public client_id!: number;
-  public service_provider_id!: number;
+  public client_id_fk!: number;
+  public service_provider_id_fk!: number;
   public service_id?: number;
+  public document_id?: number;
 }
 
-Booking.init(
+BookingRequest.init(
   {
-    id_booking: {
+    id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
@@ -40,14 +42,14 @@ Booking.init(
       type: DataTypes.TIME,
       allowNull: false,
     },
-    address: {
-      type: DataTypes.TEXT,
+    duration: {
+      type: DataTypes.STRING, // Sequelize doesn't have a native INTERVAL type for all DBs, often mapped to STRING or Custom
     },
     status: {
       type: DataTypes.STRING(20),
-      defaultValue: 'confirmed',
+      defaultValue: 'pending',
     },
-    client_id: {
+    client_id_fk: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
@@ -55,7 +57,7 @@ Booking.init(
         key: 'id_client',
       },
     },
-    service_provider_id: {
+    service_provider_id_fk: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
@@ -70,10 +72,17 @@ Booking.init(
         key: 'id_service',
       },
     },
+    document_id: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: 'document',
+        key: 'id',
+      },
+    },
   },
   {
     sequelize,
-    tableName: 'booking',
+    tableName: 'booking_request',
     timestamps: false,
   }
 );

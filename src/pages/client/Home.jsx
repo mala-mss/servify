@@ -7,7 +7,7 @@ import axiosInstance from "../../api/axiosInstance";
 import BookingModal from "../../components/common/BookingModal";
 import BookingFlow from "../../components/client/BookingFlow";
 
-const SERVICES = ["cleaning", "plumbing", "electrical", "childcare", "gardening", "tutoring"];
+const SERVICES = ["super-nanny", "baby-sitting", "childcare", "elderly-care", "pick-up"];
 
 const STATS = [
   { label: "Verified Pros", value: "1,200+" },

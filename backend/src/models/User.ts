@@ -1,116 +1,77 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
-type UserRole = 'client' | 'provider' | 'admin' | 'authorized';
-
 interface UserAttributes {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  role: UserRole;
-  phone?: string;
-  avatar?: string;
+  id: number;
+  fname: string;
+  lname: string;
   address?: string;
-  bio?: string;
-  isActive: boolean;
-  isVerified: boolean;
-  rating?: number;
-  totalJobs?: number;
-  createdAt: Date;
-  updatedAt: Date;
+  phone_number?: string;
+  profile_picture?: string;
+  email: string;
+  created_at: Date;
+  updated_at: Date;
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'isActive' | 'isVerified' | 'rating' | 'totalJobs' | 'createdAt' | 'updatedAt'> {}
+interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'address' | 'phone_number' | 'profile_picture' | 'created_at' | 'updated_at'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
-  public id!: string;
-  public name!: string;
-  public email!: string;
-  public password!: string;
-  public role!: UserRole;
-  public phone?: string;
-  public avatar?: string;
+  public id!: number;
+  public fname!: string;
+  public lname!: string;
   public address?: string;
-  public bio?: string;
-  public isActive!: boolean;
-  public isVerified!: boolean;
-  public rating?: number;
-  public totalJobs?: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  public phone_number?: string;
+  public profile_picture?: string;
+  public email!: string;
+  public readonly created_at!: Date;
+  public readonly updated_at!: Date;
 }
 
 User.init(
   {
     id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
       primaryKey: true,
     },
-    name: {
-      type: DataTypes.STRING,
+    fname: {
+      type: DataTypes.STRING(100),
       allowNull: false,
     },
-    email: {
-      type: DataTypes.STRING,
+    lname: {
+      type: DataTypes.STRING(100),
       allowNull: false,
-      unique: true,
-      validate: {
-        isEmail: true,
-      },
-    },
-    password: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    role: {
-      type: DataTypes.ENUM('client', 'provider', 'admin', 'authorized'),
-      allowNull: false,
-      defaultValue: 'client',
-    },
-    phone: {
-      type: DataTypes.STRING,
-    },
-    avatar: {
-      type: DataTypes.STRING,
     },
     address: {
-      type: DataTypes.STRING,
-    },
-    bio: {
       type: DataTypes.TEXT,
     },
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: true,
+    phone_number: {
+      type: DataTypes.STRING(20),
     },
-    isVerified: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
+    profile_picture: {
+      type: DataTypes.TEXT,
     },
-    rating: {
-      type: DataTypes.FLOAT,
-      defaultValue: 0,
-    },
-    totalJobs: {
-      type: DataTypes.INTEGER,
-      defaultValue: 0,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
+    email: {
+      type: DataTypes.STRING(100),
       allowNull: false,
+      unique: true,
+      references: {
+        model: 'account',
+        key: 'email',
+      },
+    },
+    created_at: {
+      type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
-    updatedAt: {
+    updated_at: {
       type: DataTypes.DATE,
-      allowNull: false,
       defaultValue: DataTypes.NOW,
     },
   },
   {
     sequelize,
-    tableName: 'users',
-    timestamps: true,
+    tableName: 'user',
+    timestamps: false,
   }
 );

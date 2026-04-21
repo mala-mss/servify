@@ -2,87 +2,51 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface ServiceAttributes {
-  id: string;
-  providerId: string;
+  id_service: number;
+  category_id_fk?: number;
   name: string;
-  description: string;
-  price: number;
-  unit: string;
-  category: string;
-  isActive: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  description?: string;
+  base_price?: number;
 }
 
-interface ServiceCreationAttributes extends Optional<ServiceAttributes, 'id' | 'isActive' | 'createdAt' | 'updatedAt'> {}
+interface ServiceCreationAttributes extends Optional<ServiceAttributes, 'id_service' | 'category_id_fk' | 'description' | 'base_price'> {}
 
 export class Service extends Model<ServiceAttributes, ServiceCreationAttributes> implements ServiceAttributes {
-  public id!: string;
-  public providerId!: string;
+  public id_service!: number;
+  public category_id_fk?: number;
   public name!: string;
-  public description!: string;
-  public price!: number;
-  public unit!: string;
-  public category!: string;
-  public isActive!: boolean;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  public description?: string;
+  public base_price?: number;
 }
 
 Service.init(
   {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+    id_service: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
       primaryKey: true,
     },
-    providerId: {
-      type: DataTypes.UUID,
-      allowNull: false,
+    category_id_fk: {
+      type: DataTypes.INTEGER,
       references: {
-        model: 'users',
-        key: 'id',
+        model: 'service_category',
+        key: 'id_category',
       },
     },
     name: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(100),
       allowNull: false,
     },
     description: {
       type: DataTypes.TEXT,
-      allowNull: false,
     },
-    price: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: false,
-    },
-    unit: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      defaultValue: 'hour',
-    },
-    category: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    isActive: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: true,
-    },
-    createdAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
+    base_price: {
+      type: DataTypes.NUMERIC(10, 2),
     },
   },
   {
     sequelize,
-    tableName: 'services',
-    timestamps: true,
+    tableName: 'service',
+    timestamps: false,
   }
 );

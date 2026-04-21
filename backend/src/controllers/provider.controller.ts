@@ -12,7 +12,7 @@ export const searchProviders = async (req: Request, res: Response): Promise<void
     let sql = `
       SELECT 
         u.id as user_id,
-        u.name,
+        (u.fname || ' ' || u.lname),
         u.email,
         u.phone_number,
         u.address as location,
@@ -67,7 +67,7 @@ export const searchProviders = async (req: Request, res: Response): Promise<void
     if (result.rows.length === 0) {
         const allProvidersSql = `
             SELECT 
-                u.id as user_id, u.name, u.email, u.phone_number, u.address as location, u.profile_picture,
+                u.id as user_id, (u.fname || ' ' || u.lname), u.email, u.phone_number, u.address as location, u.profile_picture,
                 sp.id as provider_id, sp.bio, sp.years_of_exp, sp.rating, sp.review_count, sp.price_per_hour,
                 COALESCE(array_agg(DISTINCT s.name) FILTER (WHERE s.name IS NOT NULL), '{}') as services,
                 COALESCE(array_agg(DISTINCT sc.name) FILTER (WHERE sc.name IS NOT NULL), '{}') as categories
@@ -109,7 +109,7 @@ export const getProviderById = async (req: Request, res: Response): Promise<void
     const sql = `
       SELECT 
         u.id as user_id,
-        u.name,
+        (u.fname || ' ' || u.lname),
         u.email,
         u.phone_number,
         u.address as location,
@@ -163,7 +163,7 @@ export const getProviderDashboard = async (req: AuthRequest, res: Response): Pro
 
     const today = new Date().toISOString().split('T')[0];
     const todayJobsRes = await query(`
-      SELECT b.*, s.name as service_name, u.name as client_name
+      SELECT b.*, s.name as service_name, (u.fname || ' ' || u.lname) as client_name
       FROM booking b
       JOIN service s ON b.service_id = s.id_service
       JOIN client c ON b.client_id = c.id_client
@@ -173,7 +173,7 @@ export const getProviderDashboard = async (req: AuthRequest, res: Response): Pro
     `, [provider.id, today]);
 
     const pendingRequestsRes = await query(`
-      SELECT b.*, s.name as service_name, u.name as client_name
+      SELECT b.*, s.name as service_name, (u.fname || ' ' || u.lname) as client_name
       FROM booking b
       JOIN service s ON b.service_id = s.id_service
       JOIN client c ON b.client_id = c.id_client
@@ -290,7 +290,7 @@ export const getProviderEarnings = async (req: AuthRequest, res: Response): Prom
     const transactionsRes = await query(`
       SELECT 
         p.id_payment as id,
-        u.name as client_name,
+        (u.fname || ' ' || u.lname) as client_name,
         s.name as service_name,
         p.amount,
         p.created_at as date,
@@ -370,7 +370,7 @@ export const getMyProviderProfile = async (req: AuthRequest, res: Response): Pro
   try {
     const sql = `
       SELECT 
-        u.name, u.email, u.phone_number, u.address,
+        (u.fname || ' ' || u.lname), u.email, u.phone_number, u.address,
         sp.bio, sp.years_of_exp, sp.price_per_hour, sp.rating, sp.review_count
       FROM "user" u
       JOIN service_provider sp ON u.id = sp.user_id

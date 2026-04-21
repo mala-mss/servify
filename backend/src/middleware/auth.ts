@@ -12,9 +12,9 @@ export interface AuthRequest extends Request {
   userId?: number;
 }
 
-export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {     
   try {
-    const authHeader = req.headers.authorization;
+    const authHeader = req.headers.authorization;       
     const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
@@ -23,20 +23,34 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     }
 
     const decoded = jwt.verify(token, jwtSecret) as { userId: number };
-    
-    const result = await query('SELECT id, name, email, role FROM "user" WHERE id = $1', [decoded.userId]);
+
+    const result = await query('SELECT id, fname, lname, email FROM "user" WHERE id = $1', [decoded.userId]);     
 
     if (result.rows.length === 0) {
       res.status(401).json({ message: 'Invalid user' });
       return;
     }
 
-    req.user = result.rows[0];
-    req.userId = result.rows[0].id;
+    const user = result.rows[0];
+    
+    // Determine role
+    let role = 'client';
+    const adminCheck = await query('SELECT id FROM admin WHERE user_id = $1', [user.id]);
+    if (adminCheck.rows.length > 0) {
+      role = 'admin';
+    } else {
+      const providerCheck = await query('SELECT id FROM service_provider WHERE user_id = $1', [user.id]);
+      if (providerCheck.rows.length > 0) {
+        role = 'provider';
+      }
+    }
+
+    req.user = { ...user, role };
+    req.userId = user.id;
     next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
-    if (error instanceof jwt.JsonWebTokenError) {
+    console.error('Auth middleware error:', error);     
+    if (error instanceof jwt.JsonWebTokenError) {       
       res.status(401).json({ message: 'Invalid token' });
     } else if (error instanceof jwt.TokenExpiredError) {
       res.status(401).json({ message: 'Token expired' });
@@ -46,7 +60,7 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
   }
 };
 
-export const authorize = (...roles: string[]) => {
+export const authorize = (...roles: string[]) => {      
   return (req: AuthRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
       res.status(401).json({ message: 'Authentication required' });

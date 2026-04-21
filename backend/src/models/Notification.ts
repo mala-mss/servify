@@ -1,89 +1,65 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
-type NotificationType = 'booking' | 'job' | 'payment' | 'review' | 'system';
-type NotificationPriority = 'low' | 'medium' | 'high';
-
 interface NotificationAttributes {
-  id: string;
-  userId: string;
-  type: NotificationType;
-  priority: NotificationPriority;
+  id: number;
+  user_id: number;
   title: string;
-  message: string;
-  data?: Record<string, unknown>;
-  isRead: boolean;
-  createdAt: Date;
-  updatedAt: Date;
+  description?: string;
+  type?: string;
+  is_read: boolean;
+  created_at: Date;
 }
 
-interface NotificationCreationAttributes extends Optional<NotificationAttributes, 'id' | 'priority' | 'data' | 'isRead' | 'createdAt' | 'updatedAt'> {}
+interface NotificationCreationAttributes extends Optional<NotificationAttributes, 'id' | 'description' | 'type' | 'is_read' | 'created_at'> {}
 
 export class Notification extends Model<NotificationAttributes, NotificationCreationAttributes> implements NotificationAttributes {
-  public id!: string;
-  public userId!: string;
-  public type!: NotificationType;
-  public priority!: NotificationPriority;
+  public id!: number;
+  public user_id!: number;
   public title!: string;
-  public message!: string;
-  public data?: Record<string, unknown>;
-  public isRead!: boolean;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+  public description?: string;
+  public type?: string;
+  public is_read!: boolean;
+  public readonly created_at!: Date;
 }
 
 Notification.init(
   {
     id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
       primaryKey: true,
     },
-    userId: {
-      type: DataTypes.UUID,
+    user_id: {
+      type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: 'users',
+        model: 'user',
         key: 'id',
       },
     },
-    type: {
-      type: DataTypes.ENUM('booking', 'job', 'payment', 'review', 'system'),
-      allowNull: false,
-    },
-    priority: {
-      type: DataTypes.ENUM('low', 'medium', 'high'),
-      defaultValue: 'medium',
-    },
     title: {
-      type: DataTypes.STRING,
+      type: DataTypes.STRING(100),
       allowNull: false,
     },
-    message: {
+    description: {
       type: DataTypes.TEXT,
-      allowNull: false,
     },
-    data: {
-      type: DataTypes.JSONB,
+    type: {
+      type: DataTypes.STRING(20),
     },
-    isRead: {
+    is_read: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-    createdAt: {
+    created_at: {
       type: DataTypes.DATE,
-      allowNull: false,
-      defaultValue: DataTypes.NOW,
-    },
-    updatedAt: {
-      type: DataTypes.DATE,
-      allowNull: false,
       defaultValue: DataTypes.NOW,
     },
   },
   {
     sequelize,
-    tableName: 'notifications',
-    timestamps: true,
+    tableName: 'notification',
+    timestamps: false,
   }
 );
