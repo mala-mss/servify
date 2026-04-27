@@ -11,11 +11,21 @@ const jwtExpiresIn = process.env.JWT_EXPIRES_IN || '7d';
 const bcryptRounds = parseInt(process.env.BCRYPT_ROUNDS || '10');
 
 export const register = async (req: Request, res: Response): Promise<void> => {
+  console.log("REQ BODY", req.body);
   const {
-    fname, lname, email, password, role, phone_number, address, 
-    yearsOfExp, workLate, workweek, workHours, workOutsideCity, documents,
-    bio, pricePerHour
-  } = req.body;
+  name, email, password, role, phone_number, address, 
+  yearsOfExp, workLate, workweek, workHours, workOutsideCity, documents,
+  bio, pricePerHour
+} = req.body;
+
+let fname = req.body.fname;
+let lname = req.body.lname;
+
+if (name && (!fname || !lname)) {
+  const parts = name.split(" ");
+  fname = parts[0];
+  lname = parts.slice(1).join(" ") || "N/A";
+}
 
   try {
     // 1. Check if user exists in account table

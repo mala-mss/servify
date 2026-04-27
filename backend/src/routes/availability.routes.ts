@@ -7,7 +7,7 @@ import {
   deleteSchedule,
   getProviderSchedule,
   checkAvailability,
-} from '../controllers/schedule.controller';
+} from '../controllers/availability.controller';
 import { authenticate } from '../middleware/auth';
 import { validate } from '../middleware/validation';
 import { body } from 'express-validator';

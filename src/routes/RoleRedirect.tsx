@@ -1,5 +1,5 @@
 import { Navigate } from 'react-router-dom'
-import { useAuth } from '@/context/AuthContext'
+import { useAuth } from '@/controllers/context/AuthContext'
 
 export default function RoleRedirect() {
   const { user, role } = useAuth()
@@ -14,3 +14,13 @@ export default function RoleRedirect() {
     default:           return <Navigate to="/login"                 replace />
   }
 }
+
+
+
+
+
+
+
+
+
+

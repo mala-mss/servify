@@ -1,95 +1,64 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { Transaction, User, Job } from '../models';
+import { Payment, Booking, User } from '../models';
 import { AppError } from '../middleware/errorHandler';
 
 export const getAllTransactions = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { userId, status, type, jobId } = req.query;
+  const { userId, status, bookingId } = req.query;
 
   const where: any = {};
   if (userId) where.userId = userId;
   if (status) where.status = status;
-  if (type) where.type = type;
-  if (jobId) where.jobId = jobId;
+  if (bookingId) where.booking_id = bookingId;
 
-  const transactions = await Transaction.findAll({
+  const payments = await Payment.findAll({
     where,
     include: [
-      { model: User, as: 'user', attributes: ['id', 'name', 'email', 'role'] },
-      { model: Job, as: 'job', attributes: ['id', 'title', 'date', 'status'] },
+      { model: Booking, as: 'booking', attributes: ['id', 'start_date', 'end_date', 'status', 'total_price'] },
     ],
     order: [['createdAt', 'DESC']],
   });
 
-  res.json({ transactions });
+  res.json({ payments });
 };
 
 export const getTransactionById = async (req: AuthRequest, res: Response): Promise<void> => {
-  const transaction = await Transaction.findByPk(req.params.id, {
+  const payment = await Payment.findByPk(req.params.id, {
     include: [
-      { model: User, as: 'user', attributes: ['id', 'name', 'email', 'role'] },
-      { model: Job, as: 'job', attributes: ['id', 'title', 'date', 'status', 'totalPrice'] },
+      { model: Booking, as: 'booking', attributes: ['id', 'start_date', 'end_date', 'status', 'total_price'] },
     ],
   });
 
-  if (!transaction) {
-    throw new AppError('Transaction not found', 404);
+  if (!payment) {
+    throw new AppError('Payment not found', 404);
   }
 
-  res.json({ transaction });
+  res.json({ payment });
 };
 
 export const createTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { userId, jobId, type, amount, paymentMethod, description } = req.body;
+  const { booking_id, amount, payment_method, status } = req.body;
 
-  const transaction = await Transaction.create({
-    userId,
-    jobId,
-    type,
+  const payment = await Payment.create({
+    booking_id,
     amount,
-    status: 'pending',
-    paymentMethod,
-    description,
+    payment_method,
+    status: status || 'pending',
   });
 
   res.status(201).json({
-    message: 'Transaction created successfully',
-    transaction,
+    message: 'Payment created successfully',
+    payment,
   });
 };
 
 export const updateTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id } = req.params;
-  const { status, paymentMethod, metadata } = req.body;
+  const { status, payment_method } = req.body;
 
-  const transaction = await Transaction.findByPk(id);
-  if (!transaction) {
-    throw new AppError('Transaction not found', 404);
-  }
-
-  const isAdmin = req.user!.role === 'admin';
-  if (transaction.userId !== req.user!.id && !isAdmin) {
-    throw new AppError('Unauthorized', 403);
-  }
-
-  await transaction.update({
-    status: status || transaction.status,
-    paymentMethod: paymentMethod || transaction.paymentMethod,
-    metadata: metadata || transaction.metadata,
-  });
-
-  res.json({
-    message: 'Transaction updated successfully',
-    transaction,
-  });
-};
-
-export const deleteTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id } = req.params;
-
-  const transaction = await Transaction.findByPk(id);
-  if (!transaction) {
-    throw new AppError('Transaction not found', 404);
+  const payment = await Payment.findByPk(id);
+  if (!payment) {
+    throw new AppError('Payment not found', 404);
   }
 
   const isAdmin = req.user!.role === 'admin';
@@ -97,42 +66,74 @@ export const deleteTransaction = async (req: AuthRequest, res: Response): Promis
     throw new AppError('Unauthorized', 403);
   }
 
-  await transaction.destroy();
+  await payment.update({
+    status: status || payment.status,
+    payment_method: payment_method || payment.payment_method,
+  });
 
-  res.json({ message: 'Transaction deleted successfully' });
+  res.json({
+    message: 'Payment updated successfully',
+    payment,
+  });
+};
+
+export const deleteTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+
+  const payment = await Payment.findByPk(id);
+  if (!payment) {
+    throw new AppError('Payment not found', 404);
+  }
+
+  const isAdmin = req.user!.role === 'admin';
+  if (!isAdmin) {
+    throw new AppError('Unauthorized', 403);
+  }
+
+  await payment.destroy();
+
+  res.json({ message: 'Payment deleted successfully' });
 };
 
 export const getUserTransactions = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.params.userId || req.user!.id;
 
-  const transactions = await Transaction.findAll({
-    where: { userId },
+  const payments = await Payment.findAll({
     include: [
-      { model: Job, as: 'job', attributes: ['id', 'title', 'date', 'status'] },
+      {
+        model: Booking,
+        as: 'booking',
+        where: { client_id: userId },
+        attributes: ['id', 'start_date', 'end_date', 'status', 'total_price']
+      },
     ],
     order: [['createdAt', 'DESC']],
     limit: 50,
   });
 
-  res.json({ transactions });
+  res.json({ payments });
 };
 
 export const getTransactionSummary = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { userId, type } = req.params;
+  const { userId } = req.params;
 
-  const where: any = { userId };
-  if (type) where.type = type;
+  const where: any = {};
+  if (userId) {
+    // Get payments for user's bookings
+    const userBookings = await Booking.findAll({ where: { client_id: userId }, attributes: ['id'] });
+    where.booking_id = userBookings.map((b: any) => b.id);
+  }
 
-  const transactions = await Transaction.findAll({ where });
+  const payments = await Payment.findAll({ where });
 
-  const total = transactions.reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
-  const pending = transactions.filter(t => t.status === 'pending').reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
-  const paid = transactions.filter(t => t.status === 'paid').reduce((sum, t) => sum + parseFloat(t.amount.toString()), 0);
+  const total = payments.reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
+  const pending = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
+  const paid = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
 
   res.json({
     total: total.toFixed(2),
     pending: pending.toFixed(2),
     paid: paid.toFixed(2),
-    count: transactions.length,
+    count: payments.length,
   });
 };

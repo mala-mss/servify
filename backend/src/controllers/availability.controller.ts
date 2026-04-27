@@ -1,123 +1,129 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { Schedule, User } from '../models';
+import { ProviderAvailability, ServiceProvider, User } from '../models';
 import { AppError } from '../middleware/errorHandler';
 
 export const getAllSchedules = async (req: AuthRequest, res: Response): Promise<void> => {
   const { providerId, dayOfWeek } = req.query;
 
   const where: any = {};
-  if (providerId) where.providerId = providerId;
-  if (dayOfWeek) where.dayOfWeek = parseInt(dayOfWeek as string, 10);
+  if (providerId) where.service_provider_id = providerId;
+  if (dayOfWeek) where.day_of_week = parseInt(dayOfWeek as string, 10);
 
-  const schedules = await Schedule.findAll({
+  const availabilities = await ProviderAvailability.findAll({
     where,
     include: [
-      { model: User, as: 'provider', attributes: ['id', 'name', 'avatar'] },
+      {
+        model: ServiceProvider,
+        as: 'provider',
+        include: [
+          { model: User, as: 'user', attributes: ['id', 'name', 'avatar'] }
+        ]
+      },
     ],
-    order: [['dayOfWeek', 'ASC'], ['startTime', 'ASC']],
+    order: [['day_of_week', 'ASC'], ['start_time', 'ASC']],
   });
 
-  res.json({ schedules });
+  res.json({ availabilities });
 };
 
 export const getScheduleById = async (req: AuthRequest, res: Response): Promise<void> => {
-  const schedule = await Schedule.findByPk(req.params.id, {
+  const availability = await ProviderAvailability.findByPk(req.params.id, {
     include: [
-      { model: User, as: 'provider', attributes: ['id', 'name', 'avatar'] },
+      {
+        model: ServiceProvider,
+        as: 'provider',
+        include: [
+          { model: User, as: 'user', attributes: ['id', 'name', 'avatar'] }
+        ]
+      },
     ],
   });
 
-  if (!schedule) {
-    throw new AppError('Schedule not found', 404);
+  if (!availability) {
+    throw new AppError('Availability not found', 404);
   }
 
-  res.json({ schedule });
+  res.json({ availability });
 };
 
 export const createSchedule = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { dayOfWeek, startTime, endTime, isAvailable, title, color } = req.body;
+  const { day_of_week, start_time, end_time } = req.body;
   const providerId = req.user!.id;
 
-  const schedule = await Schedule.create({
-    providerId,
-    dayOfWeek,
-    startTime,
-    endTime,
-    isAvailable: isAvailable !== undefined ? isAvailable : true,
-    title,
-    color,
+  const availability = await ProviderAvailability.create({
+    service_provider_id: providerId,
+    day_of_week,
+    start_time,
+    end_time,
   });
 
   res.status(201).json({
-    message: 'Schedule created successfully',
-    schedule,
+    message: 'Availability created successfully',
+    availability,
   });
 };
 
 export const updateSchedule = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id } = req.params;
-  const { dayOfWeek, startTime, endTime, isAvailable, title, color } = req.body;
+  const { day_of_week, start_time, end_time } = req.body;
 
-  const schedule = await Schedule.findByPk(id);
-  if (!schedule) {
-    throw new AppError('Schedule not found', 404);
+  const availability = await ProviderAvailability.findByPk(id);
+  if (!availability) {
+    throw new AppError('Availability not found', 404);
   }
 
   const isAdmin = req.user!.role === 'admin';
-  if (schedule.providerId !== req.user!.id && !isAdmin) {
+  if (availability.service_provider_id !== req.user!.id && !isAdmin) {
     throw new AppError('Unauthorized', 403);
   }
 
-  await schedule.update({
-    dayOfWeek: dayOfWeek !== undefined ? dayOfWeek : schedule.dayOfWeek,
-    startTime: startTime || schedule.startTime,
-    endTime: endTime || schedule.endTime,
-    isAvailable: isAvailable !== undefined ? isAvailable : schedule.isAvailable,
-    title: title !== undefined ? title : schedule.title,
-    color: color !== undefined ? color : schedule.color,
+  await availability.update({
+    day_of_week: day_of_week !== undefined ? day_of_week : availability.day_of_week,
+    start_time: start_time || availability.start_time,
+    end_time: end_time || availability.end_time,
   });
 
   res.json({
-    message: 'Schedule updated successfully',
-    schedule,
+    message: 'Availability updated successfully',
+    availability,
   });
 };
 
 export const deleteSchedule = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id } = req.params;
 
-  const schedule = await Schedule.findByPk(id);
-  if (!schedule) {
-    throw new AppError('Schedule not found', 404);
+  const availability = await ProviderAvailability.findByPk(id);
+  if (!availability) {
+    throw new AppError('Availability not found', 404);
   }
 
   const isAdmin = req.user!.role === 'admin';
-  if (schedule.providerId !== req.user!.id && !isAdmin) {
+  if (availability.service_provider_id !== req.user!.id && !isAdmin) {
     throw new AppError('Unauthorized', 403);
   }
 
-  await schedule.destroy();
+  await availability.destroy();
 
-  res.json({ message: 'Schedule deleted successfully' });
+  res.json({ message: 'Availability deleted successfully' });
 };
 
 export const getProviderSchedule = async (req: AuthRequest, res: Response): Promise<void> => {
   const providerId = req.params.providerId || req.user!.id;
 
-  const schedules = await Schedule.findAll({
-    where: { providerId },
-    order: [['dayOfWeek', 'ASC'], ['startTime', 'ASC']],
+  const availabilities = await ProviderAvailability.findAll({
+    where: { service_provider_id: providerId },
+    order: [['day_of_week', 'ASC'], ['start_time', 'ASC']],
   });
 
   const weekSchedule = {
-    0: schedules.filter(s => s.dayOfWeek === 0),
-    1: schedules.filter(s => s.dayOfWeek === 1),
-    2: schedules.filter(s => s.dayOfWeek === 2),
-    3: schedules.filter(s => s.dayOfWeek === 3),
-    4: schedules.filter(s => s.dayOfWeek === 4),
-    5: schedules.filter(s => s.dayOfWeek === 5),
-    6: schedules.filter(s => s.dayOfWeek === 6),
+    0: availabilities.filter((a: any) => a.day_of_week === 0),
+    1: availabilities.filter((a: any) => a.day_of_week === 1),
+    2: availabilities.filter((a: any) => a.day_of_week === 2),
+    3: availabilities.filter((a: any) => a.day_of_week === 3),
+    4: availabilities.filter((a: any) => a.day_of_week === 4),
+    5: availabilities.filter((a: any) => a.day_of_week === 5),
+    6: availabilities.filter((a: any) => a.day_of_week === 6),
   };
 
   res.json({ schedules: weekSchedule });
@@ -134,21 +140,20 @@ export const checkAvailability = async (req: AuthRequest, res: Response): Promis
   const dayOfWeek = targetDate.getDay();
   const timeStr = time as string;
 
-  const schedules = await Schedule.findAll({
+  const availabilities = await ProviderAvailability.findAll({
     where: {
-      providerId: providerId as string,
-      dayOfWeek,
-      isAvailable: true,
+      service_provider_id: providerId as string,
+      day_of_week: dayOfWeek,
     },
   });
 
-  const isAvailable = schedules.some(schedule => {
-    return timeStr >= schedule.startTime && timeStr <= schedule.endTime;
+  const isAvailable = availabilities.some((availability: any) => {
+    return timeStr >= availability.start_time && timeStr <= availability.end_time;
   });
 
   res.json({
     available: isAvailable,
     dayOfWeek,
-    schedules,
+    availabilities,
   });
 };

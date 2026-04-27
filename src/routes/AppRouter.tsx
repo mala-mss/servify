@@ -2,75 +2,68 @@ import React from 'react';
 import { Routes, Route, Outlet } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import RoleRedirect from './RoleRedirect';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/controllers/context/AuthContext';
 // Auth Pages
-import Login from '../pages/auth/Login';
-import Register from '../pages/auth/Register';
-import ForgotPassword from '../pages/auth/ForgotPassword';
-import ResetPassword from '../pages/auth/ResetPassword';
+import Login from '@/views/pages/auth/Login';
+import Register from '@/views/pages/auth/Register';
 
 // Client Pages
-import Home from '../pages/client/Home';
-import BrowseServices from '../pages/client/BrowseServices';
-import BrowseProviders from '../pages/client/BrowseProviders';
-import ServiceDetails from '../pages/client/ServiceDetails';
-import BookingRequest from '../pages/client/BookingRequest';
-import ProviderDetail from '../pages/client/ProviderDetail';
-import AllProviders from '../pages/client/AllProviders';
-import BookingConfirm from '../pages/client/BookingConfirm';
-import MyBooking from '../pages/client/MyBooking';
-import BookingDetail from '../pages/client/BookingDetail';
-import BookingTracker from '../pages/client/BookingTracker';
-import Checkout from '../pages/client/Checkout';
-import PaymentSuccess from '../pages/client/PaymentSuccess';
-import LeaveFeedback from '../pages/client/LeaveFeedback';
-import MyDependants from '../pages/client/MyDependants';
-import DependantsDetail from '../pages/client/DependantsDetail';
-import ClientProfile from '../pages/client/Profile';
-import ClientNotification from '../pages/client/Notification';
+import Home from '@/views/pages/client/Home';
+import BrowseServices from '@/views/pages/client/BrowseServices';
+import BrowseProviders from '@/views/pages/client/BrowseProviders';
+import ServiceDetails from '@/views/pages/client/ServiceDetails';
+import BookingRequest from '@/views/pages/client/BookingRequest';
+import ProviderDetail from '@/views/pages/client/ProviderDetail';
+import AllProviders from '@/views/pages/client/AllProviders';
+import BookingConfirm from '@/views/pages/client/BookingConfirm';
+import MyBooking from '@/views/pages/client/MyBooking';
+import BookingDetail from '@/views/pages/client/BookingDetail';
+import BookingTracker from '@/views/pages/client/BookingTracker';
+import Checkout from '@/views/pages/client/Checkout';
+import PaymentSuccess from '@/views/pages/client/PaymentSuccess';
+import LeaveFeedback from '@/views/pages/client/LeaveFeedback';
+import MyDependants from '@/views/pages/client/MyDependants';
+import DependantsDetail from '@/views/pages/client/DependantsDetail';
+import ClientProfile from '@/views/pages/client/Profile';
+import ClientNotification from '@/views/pages/client/Notification';
 
 // Provider Pages
-import ProviderLayout from '../pages/provider/ProviderLayout';
-import ProviderDashboard from '../pages/provider/Dashboard';
-import IncomingRequests from '../pages/provider/IncomingRequests';
-import MyJobs from '../pages/provider/MyJobs';
-import JobDetail from '../pages/provider/JobDetail';
-import MyServices from '../pages/provider/MyServices';
-import AddService from '../pages/provider/AddService';
-import EditService from '../pages/provider/EditService';
-import Schedule from '../pages/provider/Schedule';
-import Earning from '../pages/provider/Earning';
-import MyDocuments from '../pages/provider/MyDocuments';
-import Reviews from '../pages/provider/Reviews';
-import ProviderProfile from '../pages/provider/Profile';
-import ProviderNotifications from '../pages/provider/Notifications';
+import ProviderLayout from '@/views/pages/provider/ProviderLayout';
+import ProviderDashboard from '@/views/pages/provider/Dashboard';
+import IncomingRequests from '@/views/pages/provider/IncomingRequests';
+import MyJobs from '@/views/pages/provider/MyJobs';
+import JobDetail from '@/views/pages/provider/JobDetail';
+import MyServices from '@/views/pages/provider/MyServices';
+import AddService from '@/views/pages/provider/AddService';
+import EditService from '@/views/pages/provider/EditService';
+import Schedule from '@/views/pages/provider/Schedule';
+import Earning from '@/views/pages/provider/Earning';
+import MyDocuments from '@/views/pages/provider/MyDocuments';
+import Reviews from '@/views/pages/provider/Reviews';
+import ProviderProfile from '@/views/pages/provider/Profile';
+import ProviderNotifications from '@/views/pages/provider/Notifications';
 
 // Admin Pages
-import AdminLayout from '../pages/admin/AdminLayout';
-import AdminDashboard from '../pages/admin/Dashboard';
-import ManageUsers from '../pages/admin/ManageUsers';
-import UserDetail from '../pages/admin/UserDetail';
-import ManageBookings from '../pages/admin/ManageBookings';
-import AdminBookingDetail from '../pages/admin/BookingDetail';
-import ManageServices from '../pages/admin/ManageServices';
-import ManageCategories from '../pages/admin/ManageCategories';
-import Reports from '../pages/admin/Reports';
-import ReportDetail from '../pages/admin/ReportDetail';
-import Analytics from '../pages/admin/Analytics';
-import Settings from '../pages/admin/Settings';
-
-// Authorized Pages
-import PendingApprovals from '../pages/authorized/PendingApprovals';
-import ProviderReview from '../pages/authorized/ProviderReview';
-import ApprovalHistory from '../pages/authorized/ApprovalHistory';
+import AdminLayout from '@/views/pages/admin/AdminLayout';
+import AdminDashboard from '@/views/pages/admin/Dashboard';
+import ManageUsers from '@/views/pages/admin/ManageUsers';
+import UserDetail from '@/views/pages/admin/UserDetail';
+import ManageBookings from '@/views/pages/admin/ManageBookings';
+import AdminBookingDetail from '@/views/pages/admin/BookingDetail';
+import ManageServices from '@/views/pages/admin/ManageServices';
+import ManageCategories from '@/views/pages/admin/ManageCategories';
+import Reports from '@/views/pages/admin/Reports';
+import ReportDetail from '@/views/pages/admin/ReportDetail';
+import Analytics from '@/views/pages/admin/Analytics';
+import Settings from '@/views/pages/admin/Settings';
 
 // Family Care Pages
-import Dashboard from '../pages/Dashboard';
-import Booking from '../pages/Booking';
+import Dashboard from '@/views/pages/Dashboard';
+import Booking from '@/views/pages/Booking';
 
-import ClientNavbar from '../components/layout/ClientNavbar';
-import { useTheme } from '../context/ThemeContext';
-import axiosInstance from '../api/axiosInstance';
+import ClientNavbar from '@/views/components/layout/ClientNavbar';
+import { useTheme } from '@/controllers/context/ThemeContext';
+import axiosInstance from '@/controllers/api/axiosInstance';
 
 const ClientLayout: React.FC = () => {
   const { mode: theme, toggle, palette } = useTheme();
@@ -110,8 +103,6 @@ const AppRouter: React.FC = () => {
       {/* Public Routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Family Care Specific Routes */}
       <Route element={<ProtectedRoute allowedRoles={['client']} />}>
@@ -166,7 +157,6 @@ const AppRouter: React.FC = () => {
     {/* Admin Routes - No Auth Required */}
       <Route element={<AdminLayout />}>
   <Route path="/admin/dashboard" element={<AdminDashboard />} />
-  <Route path="/admin/approvals" element={<PendingApprovals />} />
   <Route path="/admin/users" element={<ManageUsers />} />
   <Route path="/admin/users/:id" element={<UserDetail />} />
   <Route path="/admin/bookings" element={<ManageBookings />} />
@@ -179,13 +169,6 @@ const AppRouter: React.FC = () => {
   <Route path="/admin/settings" element={<Settings />} />
 </Route>
 
-      {/* Protected Authorized Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['authorized']} />}>
-        <Route path="/authorized/approvals" element={<PendingApprovals />} />
-        <Route path="/authorized/provider-review/:id" element={<ProviderReview />} />
-        <Route path="/authorized/approval-history" element={<ApprovalHistory />} />
-      </Route>
-
       {/* Root & Fallback */}
       <Route path="/" element={user ? <RoleRedirect /> : <Login />} />
       <Route path="/unauthorized" element={<div className="p-8 text-center">Unauthorized Access</div>} />
@@ -195,3 +178,11 @@ const AppRouter: React.FC = () => {
 };
 
 export default AppRouter;
+
+
+
+
+
+
+
+
