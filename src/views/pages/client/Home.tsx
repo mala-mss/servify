@@ -221,6 +221,7 @@ export default function Home() {
         if (query.trim() !== "") {
           document.getElementById("caregivers-section")?.scrollIntoView({ behavior: "smooth" });
         }
+        
       }
     } catch (error) {
       console.error("Search failed:", error);

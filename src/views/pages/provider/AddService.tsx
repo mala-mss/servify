@@ -5,11 +5,12 @@ import { useNavigate } from "react-router-dom";
 import axiosInstance from "@/controllers/api/axiosInstance";
 
 interface PlatformService {
-  id_service: number;
+  id_s: number;
   name: string;
-  category_name: string;
   description: string;
   base_price: string;
+  id_c: number;
+  category_name?: string;
 }
 
 export default function AddService() {
@@ -25,7 +26,11 @@ export default function AddService() {
     const fetchAllServices = async () => {
       try {
         const response = await axiosInstance.get("/services");
-        setServices(response.data.services);
+        if (response.data && response.data.services) {
+          setServices(response.data.services);
+        } else if (Array.isArray(response.data)) {
+          setServices(response.data);
+        }
       } catch (error) {
         console.error("Failed to fetch platform services:", error);
       } finally {
@@ -42,7 +47,7 @@ export default function AddService() {
     try {
       setSubmitting(true);
       await axiosInstance.post("/providers/my-services", { 
-        serviceId: parseInt(selectedServiceId) 
+        id_s: parseInt(selectedServiceId) 
       });
       navigate("/provider/my-services");
     } catch (error) {
@@ -89,7 +94,7 @@ export default function AddService() {
     backgroundPosition: "right 14px center",
   };
 
-  const selectedService = services.find(s => s.id_service.toString() === selectedServiceId);
+  const selectedService = services.find(s => s.id_s.toString() === selectedServiceId);
 
   return (
     <div style={{ animation: "fadeUp .4s ease both" }}>
@@ -118,8 +123,8 @@ export default function AddService() {
             >
               <option value="">-- Choose a service --</option>
               {services.map(s => (
-                <option key={s.id_service} value={s.id_service}>
-                  {s.name} ({s.category_name})
+                <option key={s.id_s} value={s.id_s}>
+                  {s.name}{s.category_name ? ` (${s.category_name})` : ""}
                 </option>
               ))}
             </select>
@@ -163,15 +168,3 @@ export default function AddService() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-

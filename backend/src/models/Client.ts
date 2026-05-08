@@ -2,27 +2,20 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface ClientAttributes {
-  id_client: number;
-  user_id: number;
+  idU_cl: number;
 }
 
-interface ClientCreationAttributes extends Optional<ClientAttributes, 'id_client'> {}
+interface ClientCreationAttributes extends ClientAttributes {}
 
 export class Client extends Model<ClientAttributes, ClientCreationAttributes> implements ClientAttributes {
-  public id_client!: number;
-  public user_id!: number;
+  public idU_cl!: number;
 }
 
 Client.init(
   {
-    id_client: {
+    idU_cl: {
       type: DataTypes.INTEGER,
-      autoIncrement: true,
       primaryKey: true,
-    },
-    user_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
       references: {
         model: 'user',
         key: 'id',

@@ -3,11 +3,14 @@ import { AuthRequest } from '../middleware/auth';
 import { query } from '../db';
 
 export const getUserNotifications = async (req: AuthRequest, res: Response): Promise<void> => {
-  const userId = req.userId || req.user?.id;
+  const userId = req.userId;
 
   try {
     const result = await query(
-      'SELECT * FROM notification WHERE user_id = $1 ORDER BY created_at DESC',
+      `SELECT id, title, description, type, is_read, created_at
+       FROM notification
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
       [userId]
     );
 
@@ -33,7 +36,10 @@ export const markAsRead = async (req: AuthRequest, res: Response): Promise<void>
 
   try {
     const result = await query(
-      'UPDATE notification SET is_read = true WHERE id = $1 AND user_id = $2 RETURNING *',
+      `UPDATE notification
+       SET is_read = true
+       WHERE id = $1 AND user_id = $2
+       RETURNING id, title, description, type, is_read, created_at`,
       [id, userId]
     );
 
@@ -44,6 +50,7 @@ export const markAsRead = async (req: AuthRequest, res: Response): Promise<void>
 
     res.json({ message: 'Notification marked as read', notification: result.rows[0] });
   } catch (error: any) {
+    console.error('Mark as read error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -59,6 +66,7 @@ export const markAllAsRead = async (req: AuthRequest, res: Response): Promise<vo
 
     res.json({ message: 'All notifications marked as read' });
   } catch (error: any) {
+    console.error('Mark all as read error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -69,7 +77,7 @@ export const deleteNotification = async (req: AuthRequest, res: Response): Promi
 
   try {
     const result = await query(
-      'DELETE FROM notification WHERE id = $1 AND user_id = $2 RETURNING *',
+      'DELETE FROM notification WHERE id = $1 AND user_id = $2 RETURNING id',
       [id, userId]
     );
 
@@ -80,11 +88,30 @@ export const deleteNotification = async (req: AuthRequest, res: Response): Promi
 
     res.json({ message: 'Notification deleted successfully' });
   } catch (error: any) {
+    console.error('Delete notification error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
-export const createNotificationInternal = async (userId: number, title: string, description: string, type: string) => {
+export const deleteAllNotifications = async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.userId;
+
+  try {
+    await query('DELETE FROM notification WHERE user_id = $1', [userId]);
+    res.json({ message: 'All notifications deleted' });
+  } catch (error: any) {
+    console.error('Delete all notifications error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+/** Internal helper — call this from other controllers to push notifications */
+export const createNotificationInternal = async (
+  userId: number,
+  title: string,
+  description: string,
+  type: string
+): Promise<void> => {
   try {
     await query(
       'INSERT INTO notification (user_id, title, description, type) VALUES ($1, $2, $3, $4)',

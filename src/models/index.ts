@@ -1,261 +1,215 @@
-// Core User Models
+// ============================================================
+// types.ts — aligned with family_care PostgreSQL schema
+// ============================================================
+
+// ── User & Auth ──────────────────────────────────────────────
+
 export interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
+  id: number;
+  fname: string;
+  lname: string;
   address?: string;
+  phone_number?: string;
   profile_picture?: string;
-  role: 'client' | 'provider' | 'admin' | 'authorized';
+  email: string;
   created_at?: string;
   updated_at?: string;
 }
 
 export interface Account {
-  email: string;
+  email: string;               // PK, FK → user.email
   password: string;
-  status: 'active' | 'inactive' | 'suspended';
-  warning_count: number;
+  status?: string;             // default: 'active'
+  nbr_warning?: number;        // default: 0
   created_at?: string;
   updated_at?: string;
 }
 
 export interface Admin {
-  id: string;
-  user_id: string;
-  created_at?: string;
-  updated_at?: string;
+  idu_a: number;               // FK → user.id
 }
 
 export interface Client {
-  id: string;
-  user_id: string;
-  created_at?: string;
-  updated_at?: string;
+  idu_cl: number;              // FK → user.id
 }
 
 export interface ServiceProvider {
-  id: string;
-  user_id: string;
+  idu_sp: number;              // FK → user.id
   bio?: string;
-  experience_years?: number;
-  rating?: number;
+  years_of_exp?: number;       // default: 0
+  work_outside_city?: boolean; // default: false
+  work_late?: boolean;         // default: false
+  rating?: number;             // default: 0
+  review_count?: number;       // default: 0
   price_per_hour?: number;
-  created_at?: string;
-  updated_at?: string;
+  day_of_week?: string;
+  start_time?: string;         // TIME
+  end_time?: string;           // TIME
 }
 
-// Service Models
+// ── Services ─────────────────────────────────────────────────
+
 export interface ServiceCategory {
-  id: string;
+  id_c: number;
   name: string;
-  description?: string;
-  created_at?: string;
-  updated_at?: string;
+  target_demographics?: string;
+  policies?: string;
+  icon?: string;
 }
 
 export interface Service {
-  id: string;
+  id_s: number;
   name: string;
-  description: string;
-  base_price: number;
-  category_id_fk: string;
+  description?: string;
+  base_price?: number;
+  id_c?: number;               // FK → service_category.id_c
   category?: ServiceCategory;
-  created_at?: string;
-  updated_at?: string;
 }
 
-export interface ServiceProviderService {
-  service_provider_id: string;
-  service_id: string;
-  custom_price?: number;
-  created_at?: string;
+/** Junction table: which services a provider offers */
+export interface Providing {
+  idu_sp: number;              // FK → service_provider.idu_sp
+  id_s: number;                // FK → service.id_s
 }
 
-// Booking Models
+// ── Bookings ─────────────────────────────────────────────────
+
 export interface BookingRequest {
-  id: string;
-  client_id_fk: string;
-  service_provider_id_fk: string;
-  service_id: string;
-  document_id?: string;
-  requested_date: string;
-  requested_time: string;
-  status: 'pending' | 'accepted' | 'rejected' | 'completed';
-  notes?: string;
-  created_at?: string;
-  updated_at?: string;
+  id_r: number;
+  idu_cl: number;              // FK → client.idu_cl
+  idu_sp: number;              // FK → service_provider.idu_sp
+  date: string;                // DATE
+  time: string;                // TIME
+  duration?: string;           // INTERVAL
+  status?: string;             // default: 'pending'
+  service_id?: number;         // FK → service.id_s
 }
 
 export interface Booking {
-  id: string;
-  client_id: string;
-  service_provider_id: string;
-  service_id: string;
-  start_date: string;
-  end_date: string;
-  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled';
-  total_price: number;
-  notes?: string;
-  created_at?: string;
-  updated_at?: string;
+  id_b: number;
+  idu_cl: number;              // FK → client.idu_cl
+  idu_sp: number;              // FK → service_provider.idu_sp
+  date: string;                // DATE
+  time: string;                // TIME
+  address?: string;
+  status?: string;             // default: 'confirmed'
 }
 
-// Payment Models
-export interface Payment {
-  id: string;
-  booking_id: string;
-  amount: number;
-  payment_method: string;
-  status: 'pending' | 'paid' | 'failed' | 'refunded';
-  transaction_reference?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Dependant Models
-export interface Dependant {
-  id: string;
-  client_id_fk: string;
-  first_name: string;
-  last_name: string;
-  date_of_birth: string;
-  relationship: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface MedicalInfo {
-  id: string;
-  dependent_id: string;
-  blood_type?: string;
-  allergies?: string;
-  medical_conditions?: string;
-  medications?: string;
-  emergency_contact?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface AuthorizedPerson {
-  id: string;
-  client_id: string;
-  first_name: string;
-  last_name: string;
-  phone: string;
-  email?: string;
-  relationship: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Task Models
 export interface Task {
-  id: string;
-  client_id: string;
-  service_provider_id: string;
-  booking_id?: string;
-  title: string;
-  description?: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  due_date?: string;
-  created_at?: string;
-  updated_at?: string;
+  idt: number;
+  idu_cl: number;              // FK → client.idu_cl
+  idu_sp: number;              // FK → service_provider.idu_sp
+  name?: string;
+  start_time?: string;         // TIMESTAMP
+  end_time?: string;           // TIMESTAMP
+  duration?: string;           // INTERVAL
+  status?: string;             // default: 'not_started'
 }
 
-export interface File {
-  id: string;
-  task_id: string;
-  name: string;
-  path: string;
-  mime_type?: string;
-  size?: number;
-  created_at?: string;
-}
+// ── Payments ─────────────────────────────────────────────────
 
-// Feedback Models
-export interface Feedback {
-  id: string;
-  booking_id: string;
-  client_id: string;
-  rating: number;
-  comment?: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Notification Models
-export interface Notification {
-  id: string;
-  user_id: string;
-  title: string;
-  message: string;
-  type: 'booking' | 'payment' | 'task' | 'system';
-  is_read: boolean;
+export interface Payment {
+  id_p: number;
+  id_s?: number;               // FK → service.id_s
+  amount: number;
+  currency?: string;           // default: 'DZD'
+  status?: string;             // default: 'unpaid'
+  payment_method?: string;
   created_at?: string;
 }
 
-// Document Models
+// ── Documents & Files ────────────────────────────────────────
+
 export interface Document {
-  id: string;
-  service_provider_id?: string;
-  client_id?: string;
-  name: string;
-  path: string;
-  type: string;
-  status: 'pending' | 'approved' | 'rejected';
-  created_at?: string;
-  updated_at?: string;
+  id_doc: number;
+  name?: string;
+  link?: string;
+  type?: string;
+  width?: number;
+  idu_sp?: number;             // FK → service_provider.idu_sp
+  idu_cl?: number;             // FK → client.idu_cl
 }
 
 export interface Specification {
-  id: string;
-  document_id: string;
-  key: string;
-  value: string;
-  created_at?: string;
-}
-
-// Availability Models
-export interface ProviderAvailability {
-  id: string;
-  service_provider_id: string;
-  day_of_week: number;
-  start_time: string;
-  end_time: string;
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Report Models
-export interface Report {
-  id: string;
-  reporter_email: string;
-  reported_email: string;
-  reason: string;
+  id_spec: number;
+  url?: string;
   description?: string;
-  status: 'pending' | 'reviewed' | 'resolved';
-  created_at?: string;
-  updated_at?: string;
+  id_doc?: number;             // FK → document.id_doc
 }
 
-// Inscription Request Models
+export interface File {
+  idf: number;
+  url?: string;
+  type?: string;
+  idt?: number;                // FK → task.idt
+  idu_cl?: number;             // FK → client.idu_cl
+  idu_sp?: number;             // FK → service_provider.idu_sp
+}
+
+// ── Dependants ───────────────────────────────────────────────
+
+export interface Dependant {
+  id_dep: number;
+  name?: string;
+  date_of_birth?: string;      // DATE
+  relationship?: string;
+  id_u_cl?: number;            // FK → client.idu_cl
+}
+
+export interface DependantFile {
+  id_dep: number;              // FK → dependant.id_dep
+  link?: string;
+  type?: string;
+}
+
+export interface MedicalInfo {
+  id_dep: number;              // PK & FK → dependant.id_dep
+  blood_type?: string;
+  allergies?: string;
+  medications?: string;
+  conditions?: string;
+}
+
+// ── Social / Admin ───────────────────────────────────────────
+
+export interface AuthorizedPerson {
+  id_ap: number;
+  name?: string;
+  phone_number?: string;
+  national_id?: string;
+  id_u_cl?: number;            // FK → client.idu_cl
+}
+
 export interface InscriptionRequest {
-  id: string;
-  service_provider_id: string;
-  status: 'pending' | 'approved' | 'rejected';
-  notes?: string;
-  created_at?: string;
-  updated_at?: string;
+  id_r: number;
+  status?: string;             // default: 'pending'
+  submitted_at?: string;
+  id_u_sp?: number;            // FK → service_provider.idu_sp
 }
 
+export interface Feedback {
+  idu_cl: number;              // PK & FK → client.idu_cl
+  idu_sp: number;              // PK & FK → service_provider.idu_sp
+  overall_rating?: number;
+  punctuality?: number;
+  comment?: string;
+  created_at?: string;
+}
 
+export interface Report {
+  id_reporter: string;         // varchar (email or user id)
+  id_reported: string;         // varchar (email or user id)
+  reason?: string;
+  description?: string;
+  created_at?: string;
+}
 
-
-
-
-
-
-
-
-
+export interface Notification {
+  id: number;
+  user_id?: number;            // FK → user.id
+  title: string;
+  description?: string;
+  type?: string;
+  is_read?: boolean;           // default: false
+  created_at?: string;
+}

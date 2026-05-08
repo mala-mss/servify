@@ -2,24 +2,24 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface SpecificationAttributes {
-  id: number;
+  id_SPEC: number;
   url?: string;
   description?: string;
-  document_id: number;
+  id_DOC: number;
 }
 
-interface SpecificationCreationAttributes extends Optional<SpecificationAttributes, 'id' | 'url' | 'description'> {}
+interface SpecificationCreationAttributes extends Optional<SpecificationAttributes, 'id_SPEC' | 'url' | 'description'> {}
 
 export class Specification extends Model<SpecificationAttributes, SpecificationCreationAttributes> implements SpecificationAttributes {
-  public id!: number;
+  public id_SPEC!: number;
   public url?: string;
   public description?: string;
-  public document_id!: number;
+  public id_DOC!: number;
 }
 
 Specification.init(
   {
-    id: {
+    id_SPEC: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
@@ -30,18 +30,18 @@ Specification.init(
     description: {
       type: DataTypes.TEXT,
     },
-    document_id: {
+    id_DOC: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'document',
-        key: 'id',
+        key: 'id_DOC',
       },
     },
   },
   {
     sequelize,
-    tableName: 'specification',
+    tableName: 'specifications',
     timestamps: false,
   }
 );

@@ -2,15 +2,17 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import axiosInstance from "@/controllers/api/axiosInstance";
 
 interface User {
-  id: string;
-  name?: string;
-  fname?: string;
-  lname?: string;
-  email?: string;
-  role: 'client' | 'provider' | 'admin' | 'authorized';
+  id: number;              // DB: integer, not string
+  fname: string;           // DB: fname (no "name" column)
+  lname: string;
+  email: string;
+  role: 'client' | 'provider' | 'admin';
   phone_number?: string;
   address?: string;
   profile_picture?: string;
+  // account fields returned by login/profile endpoints
+  status?: string;
+  nbr_warning?: number;
 }
 
 interface AuthContextType {
@@ -33,23 +35,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     const checkAuth = async () => {
       const savedToken = localStorage.getItem('token');
-      const savedUser = localStorage.getItem('user');
+      const savedUser  = localStorage.getItem('user');
 
       if (savedToken && savedUser) {
         setToken(savedToken);
         try {
-          const userData = JSON.parse(savedUser);
+          const userData = JSON.parse(savedUser) as User;
           setUser(userData);
 
+          // Re-fetch fresh profile from server
           const res = await axiosInstance.get(`/auth/profile/${userData.id}`);
-          console.log("Auth check - user data from server:", res.data.user);
-          setUser(res.data.user);
-          localStorage.setItem('user', JSON.stringify(res.data.user));
+          const fresh = res.data.user as User;
+          setUser(fresh);
+          localStorage.setItem('user', JSON.stringify(fresh));
         } catch (error) {
           console.error('Auth verification failed:', error);
           logout();
         }
       }
+
       setIsLoading(false);
     };
 
@@ -79,8 +83,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  /** Convenience: returns full display name */
+  const displayName = user ? `${user.fname} ${user.lname}`.trim() : null;
+
   return (
-    <AuthContext.Provider value={{ user, role: user?.role || null, token, isLoading, login, logout, updateUser }}>
+    <AuthContext.Provider value={{
+      user,
+      role: user?.role || null,
+      token,
+      isLoading,
+      login,
+      logout,
+      updateUser,
+    }}>
       {children}
     </AuthContext.Provider>
   );
@@ -92,14 +107,4 @@ export const useAuth = () => {
   return context;
 };
 
-
-
-
-
-
-
-
-
-
-
-
+export { AuthContext };

@@ -35,11 +35,11 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     
     // Determine role
     let role = 'client';
-    const adminCheck = await query('SELECT id FROM admin WHERE user_id = $1', [user.id]);
+    const adminCheck = await query('SELECT idU_A FROM admin WHERE idU_A = $1', [user.id]);
     if (adminCheck.rows.length > 0) {
       role = 'admin';
     } else {
-      const providerCheck = await query('SELECT id FROM service_provider WHERE user_id = $1', [user.id]);
+      const providerCheck = await query('SELECT idU_SP FROM service_provider WHERE idU_SP = $1', [user.id]);
       if (providerCheck.rows.length > 0) {
         role = 'provider';
       }

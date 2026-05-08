@@ -2,17 +2,17 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface ServiceCategoryAttributes {
-  id_category: number;
+  id_C: number;
   name: string;
   target_demographics?: string;
   policies?: string;
   icon?: string;
 }
 
-interface ServiceCategoryCreationAttributes extends Optional<ServiceCategoryAttributes, 'id_category' | 'target_demographics' | 'policies' | 'icon'> {}
+interface ServiceCategoryCreationAttributes extends Optional<ServiceCategoryAttributes, 'id_C' | 'target_demographics' | 'policies' | 'icon'> {}
 
 export class ServiceCategory extends Model<ServiceCategoryAttributes, ServiceCategoryCreationAttributes> implements ServiceCategoryAttributes {
-  public id_category!: number;
+  public id_C!: number;
   public name!: string;
   public target_demographics?: string;
   public policies?: string;
@@ -21,7 +21,7 @@ export class ServiceCategory extends Model<ServiceCategoryAttributes, ServiceCat
 
 ServiceCategory.init(
   {
-    id_category: {
+    id_C: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,

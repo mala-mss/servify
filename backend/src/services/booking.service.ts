@@ -1,26 +1,29 @@
-import { Booking, BookingRequest, Notification, ServiceProvider, Client } from '../models';
+import { Booking, BookingRequest, ServiceProvider, Client } from '../models';
 import { createNotificationInternal } from '../controllers/notification.controller';
 
 /**
- * Create a booking request (first step before confirmed booking)
+ * Create a booking request
  */
-export const createBookingRequest = async (data: {
-  client_id_fk: string;
-  service_provider_id_fk: string;
-  service_id: string;
-  requested_date: string;
-  requested_time: string;
-  notes?: string;
+export const createBookingRequestService = async (data: {
+  idU_cl: number;
+  idU_SP: number;
+  service_id: number;
+  date: Date;
+  time: string;
+  duration?: string;
 }): Promise<BookingRequest> => {
-  const bookingRequest = await BookingRequest.create(data);
-
-  // Notify the provider about the new booking request
-  await createNotificationInternal({
-    user_id: data.service_provider_id_fk,
-    title: 'New Booking Request',
-    message: `You have a new booking request from a client.`,
-    type: 'booking',
+  const bookingRequest = await BookingRequest.create({
+    ...data,
+    status: 'pending'
   });
+
+  // Notify the provider
+  await createNotificationInternal(
+    data.idU_SP,
+    'New Booking Request',
+    `You have a new booking request from a client.`,
+    'booking'
+  );
 
   return bookingRequest;
 };
@@ -28,8 +31,8 @@ export const createBookingRequest = async (data: {
 /**
  * Accept a booking request and create a confirmed booking
  */
-export const acceptBookingRequest = async (bookingRequestId: string): Promise<Booking> => {
-  const bookingRequest = await BookingRequest.findByPk(bookingRequestId);
+export const acceptBookingRequestService = async (id_R: number, idU_cl: number, idU_SP: number): Promise<Booking> => {
+  const bookingRequest = await BookingRequest.findOne({ where: { id_R, idU_cl, idU_SP } });
 
   if (!bookingRequest) {
     throw new Error('Booking request not found');
@@ -41,26 +44,23 @@ export const acceptBookingRequest = async (bookingRequestId: string): Promise<Bo
 
   // Create confirmed booking
   const booking = await Booking.create({
-    client_id: bookingRequest.client_id_fk,
-    service_provider_id: bookingRequest.service_provider_id_fk,
-    service_id: bookingRequest.service_id,
-    start_date: bookingRequest.requested_date,
-    end_date: bookingRequest.requested_date, // Could be extended based on service duration
+    idU_cl: bookingRequest.idU_cl,
+    idU_SP: bookingRequest.idU_SP,
+    date: bookingRequest.date,
+    time: bookingRequest.time,
     status: 'confirmed',
-    total_price: 0, // Calculate from service price
-    notes: bookingRequest.notes,
   });
 
   // Update booking request status
   await bookingRequest.update({ status: 'accepted' });
 
   // Notify the client
-  await createNotificationInternal({
-    user_id: bookingRequest.client_id_fk,
-    title: 'Booking Accepted',
-    message: `Your booking request has been accepted by the provider.`,
-    type: 'booking',
-  });
+  await createNotificationInternal(
+    bookingRequest.idU_cl,
+    'Booking Accepted',
+    `Your booking request has been accepted by the provider.`,
+    'booking'
+  );
 
   return booking;
 };
@@ -68,8 +68,8 @@ export const acceptBookingRequest = async (bookingRequestId: string): Promise<Bo
 /**
  * Reject a booking request
  */
-export const rejectBookingRequest = async (bookingRequestId: string): Promise<void> => {
-  const bookingRequest = await BookingRequest.findByPk(bookingRequestId);
+export const rejectBookingRequestService = async (id_R: number, idU_cl: number, idU_SP: number): Promise<void> => {
+  const bookingRequest = await BookingRequest.findOne({ where: { id_R, idU_cl, idU_SP } });
 
   if (!bookingRequest) {
     throw new Error('Booking request not found');
@@ -78,22 +78,22 @@ export const rejectBookingRequest = async (bookingRequestId: string): Promise<vo
   await bookingRequest.update({ status: 'rejected' });
 
   // Notify the client
-  await createNotificationInternal({
-    user_id: bookingRequest.client_id_fk,
-    title: 'Booking Rejected',
-    message: `Your booking request has been rejected by the provider.`,
-    type: 'booking',
-  });
+  await createNotificationInternal(
+    bookingRequest.idU_cl,
+    'Booking Rejected',
+    `Your booking request has been rejected by the provider.`,
+    'booking'
+  );
 };
 
 /**
  * Update booking status with notification
  */
-export const updateBookingStatus = async (
-  bookingId: string,
-  status: Booking['status']
+export const updateBookingStatusService = async (
+  id_B: number, idU_cl: number, idU_SP: number,
+  status: string
 ): Promise<Booking> => {
-  const booking = await Booking.findByPk(bookingId);
+  const booking = await Booking.findOne({ where: { id_B, idU_cl, idU_SP } });
 
   if (!booking) {
     throw new Error('Booking not found');
@@ -101,15 +101,11 @@ export const updateBookingStatus = async (
 
   await booking.update({ status });
 
-  // Notify relevant parties based on status change
+  // Notify relevant parties
   let notificationTitle = '';
   let notificationMessage = '';
 
   switch (status) {
-    case 'in_progress':
-      notificationTitle = 'Booking In Progress';
-      notificationMessage = 'Your booking is now in progress.';
-      break;
     case 'completed':
       notificationTitle = 'Booking Completed';
       notificationMessage = 'Your booking has been completed. Please leave a review!';
@@ -121,42 +117,13 @@ export const updateBookingStatus = async (
   }
 
   if (notificationTitle) {
-    await createNotificationInternal({
-      user_id: booking.client_id,
-      title: notificationTitle,
-      message: notificationMessage,
-      type: 'booking',
-    });
+    await createNotificationInternal(
+      booking.idU_cl,
+      notificationTitle,
+      notificationMessage,
+      'booking'
+    );
   }
 
   return booking;
-};
-
-/**
- * Get booking statistics for a user
- */
-export const getBookingStats = async (userId: string, role: string): Promise<{
-  total: number;
-  pending: number;
-  confirmed: number;
-  completed: number;
-  cancelled: number;
-}> => {
-  const where: any = {};
-
-  if (role === 'client') {
-    where.client_id = userId;
-  } else if (role === 'provider') {
-    where.service_provider_id = userId;
-  }
-
-  const [total, pending, confirmed, completed, cancelled] = await Promise.all([
-    Booking.count({ where }),
-    Booking.count({ where: { ...where, status: 'pending' } }),
-    Booking.count({ where: { ...where, status: 'confirmed' } }),
-    Booking.count({ where: { ...where, status: 'completed' } }),
-    Booking.count({ where: { ...where, status: 'cancelled' } }),
-  ]);
-
-  return { total, pending, confirmed, completed, cancelled };
 };

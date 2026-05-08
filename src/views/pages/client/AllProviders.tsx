@@ -1,4 +1,4 @@
-// src/pages/client/AllProviders.jsx
+﻿// src/pages/client/AllProviders.jsx
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams, useNavigate, useOutletContext } from "react-router-dom";
@@ -27,26 +27,23 @@ interface Provider {
   categories: string[];
 }
 
-const CITIES = ["All"];
-const SERVICE_TYPES = ["All"];
-
 export default function AllProviders() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { mode: theme, palette: p } = useTheme();
-  const { toggle } = useOutletContext();
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [providers, setProviders] = useState<Provider[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
- 
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(searchParams.get("search") || "");
   const [selectedCity, setSelectedCity] = useState("All");
   const [selectedService, setSelectedService] = useState("All");
   const [selectedCategory, setSelectedCategory] = useState("all");
 
+  const [cities, setCities] = useState(["All"]);
+  const [services, setServices] = useState(["All"]);
 
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedServiceForBooking, setSelectedServiceForBooking] = useState<{ name: string } | null>(null);
@@ -63,27 +60,32 @@ export default function AllProviders() {
         setLoading(true);
         const [providersRes, categoriesRes] = await Promise.all([
           axiosInstance.get('/users/providers/search'),
-          axiosInstance.get('/controllers/services/categories')
+          axiosInstance.get('/services/categories')
         ]);
 
         if (providersRes.data.success) {
-          const mapped = providersRes.data.providers.map((p_item) => ({
+          const mapped = providersRes.data.providers.map((p_item: any) => ({
             id: p_item.provider_id,
-            name: p_item.name,
-            service: (p_item.services && p_item.services[0]) || "General Provider",
-            rating: p_item.rating || 0,
-            reviews: p_item.review_count || 0,
+            name: p_item.name || (p_item.fname ? (p_item.fname + " " + p_item.lname) : "Unknown"),
+            service: (p_item.services && p_item.services.length > 0) ? p_item.services[0] : "General Provider",
+            rating: parseFloat(p_item.rating) || 0,
+            reviews: parseInt(p_item.review_count) || 0,
             location: p_item.location || "Unknown",
-            price: p_item.price_per_hour || 0,
+            price: parseFloat(p_item.price_per_hour) || 0,
             img: p_item.name ? p_item.name[0] : "P",
             bio: p_item.bio || "",
-            years_of_exp: p_item.years_of_exp || 0,
+            years_of_exp: parseInt(p_item.years_of_exp) || 0,
             categories: p_item.categories || []
           }));
           setProviders(mapped);
+          
+          const uniqueCities = ["All", ...new Set(mapped.map((p: any) => p.location).filter(Boolean))] as string[];
+          const uniqueServices = ["All", ...new Set(mapped.map((p: any) => p.service).filter(Boolean))] as string[];
+          setCities(uniqueCities);
+          setServices(uniqueServices);
         }
 
-        if (categoriesRes.data.success) {
+        if (categoriesRes.data.categories) {
           setCategories([{ id_category: "all", name: "All Categories" }, ...categoriesRes.data.categories]);
         }
       } catch (error) {
@@ -101,7 +103,7 @@ export default function AllProviders() {
     const matchesCity = selectedCity === "All" || prov.location === selectedCity;
     const matchesService = selectedService === "All" || prov.service === selectedService;
     const matchesCategory = selectedCategory === "all" ||
-                           (prov.categories && prov.categories.some(c => c.toString() === selectedCategory.toString()));
+                           (prov.categories && prov.categories.some(c => c.toString().toLowerCase() === categories.find(cat => cat.id_category.toString() === selectedCategory.toString())?.name.toLowerCase()));     
     return matchesSearch && matchesCity && matchesService && matchesCategory;
   });
 
@@ -111,39 +113,36 @@ export default function AllProviders() {
   };
 
   const handleViewProfile = (providerId: string) => {
-    navigate(`/client/provider/${providerId}`);
+    navigate("/client/provider/" + providerId);
   };
 
   return (
     <div style={{ ...styles.root, background: p.bg, color: p.text }}>
-      <div style={{ ...styles.bgGrid, backgroundImage: theme === 'dark' ? `radial-gradient(circle at 2px 2px, rgba(255,255,255,0.02) 1px, transparent 0)` : `radial-gradient(circle at 2px 2px, ${p.grid} 1px, transparent 0)` }} />
-      <div style={{ ...styles.glow, left: mousePos.x - 300, top: mousePos.y - 300, background: `radial-gradient(circle, ${p.glow} 0%, transparent 70%)` }} />
+      <div style={{ ...styles.bgGrid, backgroundImage: theme === 'dark' ? "radial-gradient(circle at 2px 2px, rgba(255,255,255,0.02) 1px, transparent 0)" : "radial-gradient(circle at 2px 2px, " + p.grid + " 1px, transparent 0)" }} />
+      <div style={{ ...styles.glow, left: mousePos.x - 300, top: mousePos.y - 300, background: "radial-gradient(circle, " + p.glow + " 0%, transparent 70%)" }} />
 
       <main style={styles.main}>
-        {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           style={styles.header}
         >
           <h1 style={{ ...styles.title, color: p.text }}>
-            All <span style={{ color: p.primary }}>Service Providers</span>
+            Explore <span style={{ color: p.primary }}>Care Services</span>
           </h1>
           <p style={{ ...styles.subtitle, color: p.textMuted }}>
-            Browse our complete network of verified professionals
+            Find and book top-rated care professionals in your area
           </p>
         </motion.div>
 
-        {/* Filters */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           style={styles.filters}
         >
-          {/* Search Input */}
           <div style={{ ...styles.searchBox, background: p.cardBg, borderColor: p.border }}>
-            <span style={{ fontSize: 18, color: p.textMuted }}>⌕</span>
+            <span style={{ fontSize: 18, color: p.textMuted }}>🔍</span>
             <input
               type="text"
               placeholder="Search by name or service..."
@@ -160,7 +159,6 @@ export default function AllProviders() {
             />
           </div>
 
-          {/* Location Filter */}
           <select
             value={selectedCity}
             onChange={(e) => setSelectedCity(e.target.value)}
@@ -171,12 +169,11 @@ export default function AllProviders() {
               color: p.text
             }}
           >
-            {CITIES.map(city => (
+            {cities.map(city => (
               <option key={city} value={city}>{city === "All" ? "All Locations" : city}</option>
             ))}
           </select>
 
-          {/* Service Type Filter */}
           <select
             value={selectedService}
             onChange={(e) => setSelectedService(e.target.value)}
@@ -187,12 +184,11 @@ export default function AllProviders() {
               color: p.text
             }}
           >
-            {SERVICE_TYPES.map(service => (
+            {services.map(service => (
               <option key={service} value={service}>{service === "All" ? "All Services" : service}</option>
             ))}
           </select>
 
-          {/* Category Filter */}
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
@@ -209,12 +205,10 @@ export default function AllProviders() {
           </select>
         </motion.div>
 
-        {/* Results Count */}
         <div style={{ marginBottom: 24, color: p.textMuted, fontSize: 14 }}>
-          Showing <strong style={{ color: p.text }}>{filteredProviders.length}</strong> of {providers.length} providers
+          Showing <strong style={{ color: p.text }}>{filteredProviders.length}</strong> of {providers.length} providers      
         </div>
 
-        {/* Providers Grid */}
         {loading ? (
           <div style={{ textAlign: 'center', padding: 60, color: p.textMuted }}>
             Loading providers...
@@ -238,33 +232,33 @@ export default function AllProviders() {
                     background: provider.rating >= 4.5 ? "rgba(107,200,178,0.1)" : "rgba(255,255,255,0.05)",
                     color: provider.rating >= 4.5 ? "#6BC8B2" : p.textMuted
                   }}>
-                    {provider.rating >= 4.5 ? "Top Rated" : `${provider.rating}★`}
+                    {provider.rating >= 4.5 ? "Top Rated" : provider.rating + " ⭐"}
                   </div>
                 </div>
 
                 <div style={styles.cardBody}>
-                  <h3 style={styles.cardName}>{provider.name}</h3>
+                  <h3 style={{...styles.cardName, color: p.text}}>{provider.name}</h3>
                   <p style={{ ...styles.cardService, color: p.primary }}>{provider.service}</p>
 
                   <div style={styles.meta}>
-                    <span>★ {provider.rating} ({provider.reviews} reviews)</span>
-                    <span>•</span>
-                    <span>{provider.location}</span>
-                    <span>•</span>
-                    <span>{provider.years_of_exp} yrs exp</span>
+                    <span style={{color: p.textMuted}}>⭐ {provider.rating} ({provider.reviews} reviews)</span>
+                    <span style={{color: p.textMuted}}>•</span>
+                    <span style={{color: p.textMuted}}>{provider.location}</span>
+                    <span style={{color: p.textMuted}}>•</span>
+                    <span style={{color: p.textMuted}}>{provider.years_of_exp} yrs exp</span>
                   </div>
 
                   {provider.bio && (
                     <p style={{ ...styles.bio, color: p.textMuted, fontSize: 13, marginTop: 12 }}>
-                      {provider.bio.length > 80 ? `${provider.bio.substring(0, 80)}...` : provider.bio}
+                      {provider.bio.length > 80 ? provider.bio.substring(0, 80) + "..." : provider.bio}
                     </p>
                   )}
                 </div>
 
                 <div style={styles.cardFooter}>
                   <div style={styles.price}>
-                    <span style={styles.priceValue}>${provider.price}</span>
-                    <span style={{ fontSize: 10, opacity: 0.5 }}>/hr</span>
+                    <span style={{...styles.priceValue, color: p.text}}></span>
+                    <span style={{ fontSize: 10, opacity: 0.5, color: p.textMuted }}>/hr</span>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button
@@ -325,7 +319,7 @@ const styles = {
   glow: { position: "fixed", width: 600, height: 600, borderRadius: "50%", pointerEvents: "none", zIndex: 0, opacity: 0.6, filter: "blur(80px)" },
   main: { position: "relative", zIndex: 1, maxWidth: 1400, margin: "0 auto", padding: "120px 40px 100px" },
   header: { textAlign: "center", marginBottom: 40 },
-  title: { fontFamily: "'Instrument Serif', serif", fontSize: "clamp(40px, 5vw, 56px)", lineHeight: 1, marginBottom: 12 },
+  title: { fontFamily: "'Instrument Serif', serif", fontSize: "clamp(40px, 5vw, 56px)", lineHeight: 1, marginBottom: 12 },   
   subtitle: { fontSize: 16, opacity: 0.7 },
   filters: { display: "flex", gap: 12, marginBottom: 32, flexWrap: "wrap", alignItems: "center" },
   searchBox: { display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderRadius: 14, border: "1px solid", minWidth: 250, flex: 1, maxWidth: 400 },
@@ -345,15 +339,3 @@ const styles = {
   actionBtn: { padding: "10px 16px", borderRadius: 12, border: "1px solid", background: "transparent", cursor: "pointer", fontSize: 13, fontWeight: 600, transition: "all 0.2s" },
   bookBtn: { padding: "10px 16px", borderRadius: 12, border: "none", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 700, transition: "all 0.2s" }
 };
-
-
-
-
-
-
-
-
-
-
-
-

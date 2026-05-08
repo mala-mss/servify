@@ -2,7 +2,7 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface ServiceProviderAttributes {
-  id: number;
+  idU_SP: number;
   bio?: string;
   years_of_exp: number;
   work_outside_city: boolean;
@@ -10,13 +10,15 @@ interface ServiceProviderAttributes {
   rating: number;
   review_count: number;
   price_per_hour?: number;
-  user_id: number;
+  day_of_week?: string;
+  start_time?: string;
+  end_time?: string;
 }
 
-interface ServiceProviderCreationAttributes extends Optional<ServiceProviderAttributes, 'id' | 'bio' | 'years_of_exp' | 'work_outside_city' | 'work_late' | 'rating' | 'review_count' | 'price_per_hour'> {}
+interface ServiceProviderCreationAttributes extends Optional<ServiceProviderAttributes, 'bio' | 'years_of_exp' | 'work_outside_city' | 'work_late' | 'rating' | 'review_count' | 'price_per_hour' | 'day_of_week' | 'start_time' | 'end_time'> {}
 
 export class ServiceProvider extends Model<ServiceProviderAttributes, ServiceProviderCreationAttributes> implements ServiceProviderAttributes {
-  public id!: number;
+  public idU_SP!: number;
   public bio?: string;
   public years_of_exp!: number;
   public work_outside_city!: boolean;
@@ -24,15 +26,20 @@ export class ServiceProvider extends Model<ServiceProviderAttributes, ServicePro
   public rating!: number;
   public review_count!: number;
   public price_per_hour?: number;
-  public user_id!: number;
+  public day_of_week?: string;
+  public start_time?: string;
+  public end_time?: string;
 }
 
 ServiceProvider.init(
   {
-    id: {
+    idU_SP: {
       type: DataTypes.INTEGER,
-      autoIncrement: true,
       primaryKey: true,
+      references: {
+        model: 'user',
+        key: 'id',
+      },
     },
     bio: {
       type: DataTypes.TEXT,
@@ -60,13 +67,14 @@ ServiceProvider.init(
     price_per_hour: {
       type: DataTypes.DECIMAL(10, 2),
     },
-    user_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'user',
-        key: 'id',
-      },
+    day_of_week: {
+      type: DataTypes.STRING(10),
+    },
+    start_time: {
+      type: DataTypes.TIME,
+    },
+    end_time: {
+      type: DataTypes.TIME,
     },
   },
   {

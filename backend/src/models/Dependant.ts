@@ -2,26 +2,26 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface DependantAttributes {
-  id_dependant: number;
+  id_dep: number;
   name?: string;
   date_of_birth?: Date;
   relationship?: string;
-  client_id_fk: number;
+  id_U_CL: number;
 }
 
-interface DependantCreationAttributes extends Optional<DependantAttributes, 'id_dependant' | 'name' | 'date_of_birth' | 'relationship'> {}
+interface DependantCreationAttributes extends Optional<DependantAttributes, 'id_dep' | 'name' | 'date_of_birth' | 'relationship'> {}
 
 export class Dependant extends Model<DependantAttributes, DependantCreationAttributes> implements DependantAttributes {
-  public id_dependant!: number;
+  public id_dep!: number;
   public name?: string;
   public date_of_birth?: Date;
   public relationship?: string;
-  public client_id_fk!: number;
+  public id_U_CL!: number;
 }
 
 Dependant.init(
   {
-    id_dependant: {
+    id_dep: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
@@ -35,12 +35,12 @@ Dependant.init(
     relationship: {
       type: DataTypes.STRING(50),
     },
-    client_id_fk: {
+    id_U_CL: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'client',
-        key: 'id_client',
+        key: 'idU_cl',
       },
     },
   },

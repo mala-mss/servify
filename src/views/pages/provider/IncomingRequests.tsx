@@ -1,39 +1,39 @@
 // src/pages/provider/IncomingRequests.tsx
 import { useState, useEffect } from "react";
 import { useTheme } from "@/controllers/context/ThemeContext";
-import { Link } from "react-router-dom";
 import axiosInstance from "@/controllers/api/axiosInstance";
 
-type Status = "pending" | "confirmed" | "declined" | "completed" | "cancelled";
+type Status = "pending" | "accepted" | "rejected";
 
-interface Request {
-  id_booking: number;
+interface BookingRequest {
+  id_r: number;
   client_name: string;
   service_name: string;
   date: string;
   time: string;
-  address: string;
-  amount: number;
+  duration: string;
   status: Status;
+  idu_cl: number;
+  idu_sp: number;
+  service_id: number;
 }
 
 export default function IncomingRequests() {
   const { palette: p } = useTheme();
-  const [requests, setRequests] = useState<Request[]>([]);
+  const [requests, setRequests] = useState<BookingRequest[]>([]);
   const [tab, setTab] = useState<Status>("pending");
   const [loading, setLoading] = useState(true);
-  const [declineId, setDeclineId]   = useState<number | null>(null);
+  const [declineId, setDeclineId] = useState<number | null>(null);
 
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      // We can use the generic bookings endpoint and filter locally or add a specific one
-      const response = await axiosInstance.get("/bookings");
-      if (response.data.bookings) {
-        setRequests(response.data.bookings);
+      const response = await axiosInstance.get("/bookings/requests");
+      if (response.data.bookingRequests) {
+        setRequests(response.data.bookingRequests);
       }
     } catch (error) {
-      console.error("Failed to fetch requests:", error);
+      console.error("Failed to fetch booking requests:", error);
     } finally {
       setLoading(false);
     }
@@ -43,25 +43,36 @@ export default function IncomingRequests() {
     fetchRequests();
   }, []);
 
-  const updateStatus = async (id: number, newStatus: Status) => {
+  const acceptRequest = async (id_r: number) => {
     try {
-      await axiosInstance.put(`/bookings/${id}/status`, { status: newStatus });
+      await axiosInstance.post(`/bookings/requests/${id_r}/accept`);
+      fetchRequests();
+    } catch (error) {
+      console.error("Failed to accept request:", error);
+      alert("Failed to accept booking request. Please try again.");
+    }
+  };
+
+  const rejectRequest = async (id_r: number) => {
+    try {
+      await axiosInstance.post(`/bookings/requests/${id_r}/reject`);
       fetchRequests();
       setDeclineId(null);
     } catch (error) {
-      console.error(`Failed to update status to ${newStatus}:`, error);
+      console.error("Failed to reject request:", error);
+      alert("Failed to reject booking request. Please try again.");
     }
   };
 
   const filtered = requests.filter((r) => {
     if (tab === "pending") return r.status === "pending";
-    if (tab === "confirmed") return r.status === "confirmed";
-    if (tab === "declined") return r.status === "cancelled" || r.status === "declined";
+    if (tab === "accepted") return r.status === "accepted";
+    if (tab === "rejected") return r.status === "rejected";
     return false;
   });
 
-  const counts = { 
-    pending: requests.filter(r => r.status === "pending").length 
+  const counts = {
+    pending: requests.filter(r => r.status === "pending").length
   };
 
   const cardStyle: React.CSSProperties = {
@@ -75,7 +86,7 @@ export default function IncomingRequests() {
 
       {/* TABS */}
       <div style={{ display: "flex", borderBottom: `1px solid ${p.border}`, marginBottom: 24 }}>
-        {(["pending", "confirmed", "declined"] as string[]).map((t) => (
+        {(["pending", "accepted", "rejected"] as string[]).map((t) => (
           <button key={t} onClick={() => setTab(t as Status)} style={{
             padding: "10px 20px", background: "transparent", border: "none",
             borderBottom: `2px solid ${tab === t ? p.primary : "transparent"}`,
@@ -102,7 +113,7 @@ export default function IncomingRequests() {
         </div>
       ) : (
         filtered.map((req) => (
-          <div key={req.id_booking} style={cardStyle}>
+          <div key={req.id_r} style={cardStyle}>
             {/* Top row */}
             <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -115,10 +126,10 @@ export default function IncomingRequests() {
                 </div>
               </div>
               {/* Status badge */}
-              <span style={{ 
-                fontSize: 11, fontWeight: 500, padding: "3px 9px", borderRadius: 999, 
-                color: req.status === 'confirmed' ? "#4ade80" : req.status === 'pending' ? "#fb923c" : "#f87171",
-                background: req.status === 'confirmed' ? "rgba(74,222,128,.1)" : req.status === 'pending' ? "rgba(251,146,60,.1)" : "rgba(248,113,113,.1)" 
+              <span style={{
+                fontSize: 11, fontWeight: 500, padding: "3px 9px", borderRadius: 999,
+                color: req.status === 'accepted' ? "#4ade80" : req.status === 'pending' ? "#fb923c" : "#f87171",
+                background: req.status === 'accepted' ? "rgba(74,222,128,.1)" : req.status === 'pending' ? "rgba(251,146,60,.1)" : "rgba(248,113,113,.1)"
               }}>
                 {req.status}
               </span>
@@ -126,28 +137,27 @@ export default function IncomingRequests() {
 
             {/* Meta */}
             <div style={{ display: "flex", flexWrap: "wrap", gap: 20, marginBottom: 14 }}>
-              {[
-                { icon: "◷", text: `${new Date(req.date).toLocaleDateString()} · ${req.time}` },
-                { icon: "⊙", text: `${req.amount} DZD` },
-                { icon: "◎", text: req.address },
-              ].map((m) => (
-                <div key={m.text} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: p.textMuted }}>
-                  <span>{m.icon}</span> {m.text}
+              <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: p.textMuted }}>
+                <span>◷</span> {new Date(req.date).toLocaleDateString()} · {req.time}
+              </div>
+              {req.duration && (
+                <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: p.textMuted }}>
+                  <span>⏱</span> {req.duration}
                 </div>
-              ))}
+              )}
             </div>
 
             {/* Actions — pending only */}
             {req.status === "pending" && (
               <div style={{ display: "flex", gap: 8 }}>
-                <button 
-                  onClick={() => updateStatus(req.id_booking, 'confirmed')} 
+                <button
+                  onClick={() => acceptRequest(req.id_r)}
                   style={{ padding: "8px 18px", background: "rgba(74,222,128,.1)", border: "1px solid rgba(74,222,128,.25)", borderRadius: 7, fontSize: 13, color: "#4ade80", cursor: "pointer", fontWeight: 500, fontFamily: "'DM Sans',sans-serif" }}
                 >
                   Accept
                 </button>
-                <button 
-                  onClick={() => setDeclineId(req.id_booking)} 
+                <button
+                  onClick={() => setDeclineId(req.id_r)}
                   style={{ padding: "8px 18px", background: "rgba(248,113,113,.07)", border: "1px solid rgba(248,113,113,.2)", borderRadius: 7, fontSize: 13, color: "#f87171", cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}
                 >
                   Decline
@@ -166,7 +176,7 @@ export default function IncomingRequests() {
             <div style={{ fontSize: 13, color: p.textMuted, marginBottom: 20 }}>Are you sure you want to decline this request? The client will be notified.</div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button onClick={() => setDeclineId(null)} style={{ padding: "10px 18px", background: "transparent", border: `1px solid ${p.border}`, borderRadius: 8, fontSize: 13, color: p.textMuted, cursor: "pointer", fontFamily: "'DM Sans',sans-serif" }}>Cancel</button>
-              <button onClick={() => updateStatus(declineId, 'cancelled')} style={{ padding: "10px 20px", background: "rgba(248,113,113,.12)", border: "1px solid rgba(248,113,113,.3)", borderRadius: 8, fontSize: 13, color: "#f87171", cursor: "pointer", fontWeight: 500, fontFamily: "'DM Sans',sans-serif" }}>Confirm decline</button>
+              <button onClick={() => rejectRequest(declineId)} style={{ padding: "10px 20px", background: "rgba(248,113,113,.12)", border: "1px solid rgba(248,113,113,.3)", borderRadius: 8, fontSize: 13, color: "#f87171", cursor: "pointer", fontWeight: 500, fontFamily: "'DM Sans',sans-serif" }}>Confirm decline</button>
             </div>
           </div>
         </div>
@@ -176,15 +186,3 @@ export default function IncomingRequests() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-

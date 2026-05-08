@@ -1,48 +1,65 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { ProviderAvailability, ServiceProvider, User } from '../models';
+import { ServiceProvider, User } from '../models';
 import { AppError } from '../middleware/errorHandler';
+import { Op } from 'sequelize';
 
 export const getAllSchedules = async (req: AuthRequest, res: Response): Promise<void> => {
   const { providerId, dayOfWeek } = req.query;
 
-  const where: any = {};
-  if (providerId) where.service_provider_id = providerId;
-  if (dayOfWeek) where.day_of_week = parseInt(dayOfWeek as string, 10);
+  const where: any = {
+    day_of_week: { [Op.ne]: null }
+  };
+  
+  if (providerId) where.idU_SP = providerId;
+  if (dayOfWeek) where.day_of_week = dayOfWeek.toString();
 
-  const availabilities = await ProviderAvailability.findAll({
+  const providers = await ServiceProvider.findAll({
     where,
     include: [
       {
-        model: ServiceProvider,
-        as: 'provider',
-        include: [
-          { model: User, as: 'user', attributes: ['id', 'name', 'avatar'] }
-        ]
+        model: User,
+        as: 'user',
+        attributes: ['id', 'fname', 'lname', 'profile_picture']
       },
     ],
-    order: [['day_of_week', 'ASC'], ['start_time', 'ASC']],
   });
+
+  const availabilities = providers.map(p => ({
+    id: p.idU_SP,
+    service_provider_id: p.idU_SP,
+    day_of_week: p.day_of_week,
+    start_time: p.start_time,
+    end_time: p.end_time,
+    provider: p
+  }));
 
   res.json({ availabilities });
 };
 
 export const getScheduleById = async (req: AuthRequest, res: Response): Promise<void> => {
-  const availability = await ProviderAvailability.findByPk(req.params.id, {
+  const provider = await ServiceProvider.findByPk(req.params.id, {
     include: [
       {
-        model: ServiceProvider,
-        as: 'provider',
-        include: [
-          { model: User, as: 'user', attributes: ['id', 'name', 'avatar'] }
-        ]
+        model: User,
+        as: 'user',
+        attributes: ['id', 'fname', 'lname', 'profile_picture']
       },
     ],
   });
 
-  if (!availability) {
+  if (!provider || !provider.day_of_week) {
     throw new AppError('Availability not found', 404);
   }
+
+  const availability = {
+    id: provider.idU_SP,
+    service_provider_id: provider.idU_SP,
+    day_of_week: provider.day_of_week,
+    start_time: provider.start_time,
+    end_time: provider.end_time,
+    provider
+  };
 
   res.json({ availability });
 };
@@ -51,16 +68,26 @@ export const createSchedule = async (req: AuthRequest, res: Response): Promise<v
   const { day_of_week, start_time, end_time } = req.body;
   const providerId = req.user!.id;
 
-  const availability = await ProviderAvailability.create({
-    service_provider_id: providerId,
-    day_of_week,
+  const provider = await ServiceProvider.findByPk(providerId);
+  if (!provider) {
+    throw new AppError('Service provider not found', 404);
+  }
+
+  await provider.update({
+    day_of_week: day_of_week?.toString(),
     start_time,
     end_time,
   });
 
   res.status(201).json({
     message: 'Availability created successfully',
-    availability,
+    availability: {
+      id: provider.idU_SP,
+      service_provider_id: provider.idU_SP,
+      day_of_week: provider.day_of_week,
+      start_time: provider.start_time,
+      end_time: provider.end_time
+    },
   });
 };
 
@@ -68,42 +95,52 @@ export const updateSchedule = async (req: AuthRequest, res: Response): Promise<v
   const { id } = req.params;
   const { day_of_week, start_time, end_time } = req.body;
 
-  const availability = await ProviderAvailability.findByPk(id);
-  if (!availability) {
-    throw new AppError('Availability not found', 404);
+  const provider = await ServiceProvider.findByPk(id);
+  if (!provider) {
+    throw new AppError('Service provider not found', 404);
   }
 
   const isAdmin = req.user!.role === 'admin';
-  if (availability.service_provider_id !== req.user!.id && !isAdmin) {
+  if (provider.idU_SP !== req.user!.id && !isAdmin) {
     throw new AppError('Unauthorized', 403);
   }
 
-  await availability.update({
-    day_of_week: day_of_week !== undefined ? day_of_week : availability.day_of_week,
-    start_time: start_time || availability.start_time,
-    end_time: end_time || availability.end_time,
+  await provider.update({
+    day_of_week: day_of_week !== undefined ? day_of_week.toString() : provider.day_of_week,
+    start_time: start_time || provider.start_time,
+    end_time: end_time || provider.end_time,
   });
 
   res.json({
     message: 'Availability updated successfully',
-    availability,
+    availability: {
+      id: provider.idU_SP,
+      service_provider_id: provider.idU_SP,
+      day_of_week: provider.day_of_week,
+      start_time: provider.start_time,
+      end_time: provider.end_time
+    },
   });
 };
 
 export const deleteSchedule = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id } = req.params;
 
-  const availability = await ProviderAvailability.findByPk(id);
-  if (!availability) {
-    throw new AppError('Availability not found', 404);
+  const provider = await ServiceProvider.findByPk(id);
+  if (!provider) {
+    throw new AppError('Service provider not found', 404);
   }
 
   const isAdmin = req.user!.role === 'admin';
-  if (availability.service_provider_id !== req.user!.id && !isAdmin) {
+  if (provider.idU_SP !== req.user!.id && !isAdmin) {
     throw new AppError('Unauthorized', 403);
   }
 
-  await availability.destroy();
+  await provider.update({
+    day_of_week: null,
+    start_time: null,
+    end_time: null,
+  });
 
   res.json({ message: 'Availability deleted successfully' });
 };
@@ -111,20 +148,23 @@ export const deleteSchedule = async (req: AuthRequest, res: Response): Promise<v
 export const getProviderSchedule = async (req: AuthRequest, res: Response): Promise<void> => {
   const providerId = req.params.providerId || req.user!.id;
 
-  const availabilities = await ProviderAvailability.findAll({
-    where: { service_provider_id: providerId },
-    order: [['day_of_week', 'ASC'], ['start_time', 'ASC']],
-  });
+  const provider = await ServiceProvider.findByPk(providerId);
+  
+  if (!provider || !provider.day_of_week) {
+    return res.json({ schedules: { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] } });
+  }
 
-  const weekSchedule = {
-    0: availabilities.filter((a: any) => a.day_of_week === 0),
-    1: availabilities.filter((a: any) => a.day_of_week === 1),
-    2: availabilities.filter((a: any) => a.day_of_week === 2),
-    3: availabilities.filter((a: any) => a.day_of_week === 3),
-    4: availabilities.filter((a: any) => a.day_of_week === 4),
-    5: availabilities.filter((a: any) => a.day_of_week === 5),
-    6: availabilities.filter((a: any) => a.day_of_week === 6),
+  const availability = {
+    service_provider_id: provider.idU_SP,
+    day_of_week: parseInt(provider.day_of_week, 10),
+    start_time: provider.start_time,
+    end_time: provider.end_time,
   };
+
+  const weekSchedule: any = { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] };
+  if (!isNaN(availability.day_of_week)) {
+    weekSchedule[availability.day_of_week] = [availability];
+  }
 
   res.json({ schedules: weekSchedule });
 };
@@ -140,20 +180,25 @@ export const checkAvailability = async (req: AuthRequest, res: Response): Promis
   const dayOfWeek = targetDate.getDay();
   const timeStr = time as string;
 
-  const availabilities = await ProviderAvailability.findAll({
+  const provider = await ServiceProvider.findOne({
     where: {
-      service_provider_id: providerId as string,
-      day_of_week: dayOfWeek,
+      idU_SP: providerId as string,
+      day_of_week: dayOfWeek.toString(),
     },
   });
 
-  const isAvailable = availabilities.some((availability: any) => {
-    return timeStr >= availability.start_time && timeStr <= availability.end_time;
-  });
+  const isAvailable = provider && timeStr >= provider.start_time! && timeStr <= provider.end_time!;
 
   res.json({
-    available: isAvailable,
+    available: !!isAvailable,
     dayOfWeek,
-    availabilities,
+    availabilities: provider ? [
+      {
+        service_provider_id: provider.idU_SP,
+        day_of_week: provider.day_of_week,
+        start_time: provider.start_time,
+        end_time: provider.end_time
+      }
+    ] : [],
   });
 };

@@ -2,8 +2,8 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface PaymentAttributes {
-  id_payment: number;
-  booking_id: number;
+  id_P: number;
+  id_S?: number;
   amount: number;
   currency: string;
   status: string;
@@ -11,11 +11,11 @@ interface PaymentAttributes {
   created_at: Date;
 }
 
-interface PaymentCreationAttributes extends Optional<PaymentAttributes, 'id_payment' | 'currency' | 'status' | 'payment_method' | 'created_at'> {}
+interface PaymentCreationAttributes extends Optional<PaymentAttributes, 'id_P' | 'id_S' | 'currency' | 'status' | 'payment_method' | 'created_at'> {}
 
 export class Payment extends Model<PaymentAttributes, PaymentCreationAttributes> implements PaymentAttributes {
-  public id_payment!: number;
-  public booking_id!: number;
+  public id_P!: number;
+  public id_S?: number;
   public amount!: number;
   public currency!: string;
   public status!: string;
@@ -25,17 +25,16 @@ export class Payment extends Model<PaymentAttributes, PaymentCreationAttributes>
 
 Payment.init(
   {
-    id_payment: {
+    id_P: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
-    booking_id: {
+    id_S: {
       type: DataTypes.INTEGER,
-      allowNull: false,
       references: {
-        model: 'booking',
-        key: 'id_booking',
+        model: 'service',
+        key: 'id_S',
       },
     },
     amount: {

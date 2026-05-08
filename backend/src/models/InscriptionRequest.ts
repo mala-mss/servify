@@ -2,24 +2,24 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface InscriptionRequestAttributes {
-  id: number;
+  id_R: number;
   status: string;
   submitted_at: Date;
-  service_provider_id: number;
+  id_U_SP: number;
 }
 
-interface InscriptionRequestCreationAttributes extends Optional<InscriptionRequestAttributes, 'id' | 'status' | 'submitted_at'> {}
+interface InscriptionRequestCreationAttributes extends Optional<InscriptionRequestAttributes, 'id_R' | 'status' | 'submitted_at'> {}
 
 export class InscriptionRequest extends Model<InscriptionRequestAttributes, InscriptionRequestCreationAttributes> implements InscriptionRequestAttributes {
-  public id!: number;
+  public id_R!: number;
   public status!: string;
   public submitted_at!: Date;
-  public service_provider_id!: number;
+  public id_U_SP!: number;
 }
 
 InscriptionRequest.init(
   {
-    id: {
+    id_R: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
@@ -32,12 +32,12 @@ InscriptionRequest.init(
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
-    service_provider_id: {
+    id_U_SP: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'service_provider',
-        key: 'id',
+        key: 'idU_SP',
       },
     },
   },

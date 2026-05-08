@@ -2,30 +2,30 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface DocumentAttributes {
-  id: number;
+  id_DOC: number;
   name?: string;
   link?: string;
   type?: string;
   width?: number;
-  service_provider_id: number;
-  client_id?: number;
+  idU_SP?: number;
+  idU_CL?: number;
 }
 
-interface DocumentCreationAttributes extends Optional<DocumentAttributes, 'id' | 'name' | 'link' | 'type' | 'width' | 'client_id'> {}
+interface DocumentCreationAttributes extends Optional<DocumentAttributes, 'id_DOC' | 'name' | 'link' | 'type' | 'width' | 'idU_SP' | 'idU_CL'> {}
 
 export class Document extends Model<DocumentAttributes, DocumentCreationAttributes> implements DocumentAttributes {
-  public id!: number;
+  public id_DOC!: number;
   public name?: string;
   public link?: string;
   public type?: string;
   public width?: number;
-  public service_provider_id!: number;
-  public client_id?: number;
+  public idU_SP?: number;
+  public idU_CL?: number;
 }
 
 Document.init(
   {
-    id: {
+    id_DOC: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
@@ -42,19 +42,18 @@ Document.init(
     width: {
       type: DataTypes.INTEGER,
     },
-    service_provider_id: {
+    idU_SP: {
       type: DataTypes.INTEGER,
-      allowNull: false,
       references: {
         model: 'service_provider',
-        key: 'id',
+        key: 'idU_SP',
       },
     },
-    client_id: {
+    idU_CL: {
       type: DataTypes.INTEGER,
       references: {
         model: 'client',
-        key: 'id_client',
+        key: 'idU_cl',
       },
     },
   },

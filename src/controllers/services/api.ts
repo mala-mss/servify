@@ -1,6 +1,9 @@
-import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http:/localhost:5000/api';
+import  { AxiosError} from 'axios';
+import axios from "axios";
+import type { AxiosInstance } from "axios";
+import type { InternalAxiosRequestConfig } from 'axios';
+import type { AxiosResponse } from 'axios';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api: AxiosInstance = axios.create({
   baseURL: API_URL,
@@ -28,7 +31,6 @@ api.interceptors.response.use(
   (response: AxiosResponse) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      / Token expired or invalid
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

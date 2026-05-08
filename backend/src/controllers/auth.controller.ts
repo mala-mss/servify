@@ -55,36 +55,36 @@ if (name && (!fname || !lname)) {
     if (role === 'provider') {
       // Create Service Provider
       const provider = await query(
-        'INSERT INTO service_provider (user_id, bio, years_of_exp, work_late, work_outside_city, price_per_hour) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-        [userId, bio || '', yearsOfExp || 0, workLate || false, workOutsideCity || false, pricePerHour || 0]
+        'INSERT INTO service_provider (idU_SP, bio, years_of_exp, work_late, work_outside_city, price_per_hour, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING idU_SP',
+        [
+          userId, 
+          bio || '', 
+          yearsOfExp || 0, 
+          workLate || false, 
+          workOutsideCity || false, 
+          pricePerHour || 0,
+          workweek && Array.isArray(workweek) ? workweek[0] : null,
+          workHours?.start || '09:00',
+          workHours?.end || '17:00'
+        ]
       );
-      const providerId = provider.rows[0].id;
-
-      // Handle Availability (provider_availability table)
-      if (workweek && Array.isArray(workweek)) {        
-        for (const day of workweek) {
-          await query(
-            'INSERT INTO provider_availability (service_provider_id, day_of_week, start_time, end_time) VALUES ($1, $2, $3, $4)',
-            [providerId, day, workHours?.start || '09:00', workHours?.end || '17:00']
-          );
-        }
-      }
+      const providerId = provider.rows[0].idU_SP;
 
       // Handle Documents (document table)
       if (documents && Array.isArray(documents)) {      
         for (const doc of documents) {
           await query(
-            'INSERT INTO document (service_provider_id, name, type, link, width) VALUES ($1, $2, $3, $4, $5)',
+            'INSERT INTO document (idU_SP, name, type, link, width) VALUES ($1, $2, $3, $4, $5)',
             [providerId, doc.name, doc.type, doc.link, doc.width]
           );
         }
       }
     } else if (role === 'admin') {
-      await query('INSERT INTO admin (user_id) VALUES ($1)', [userId]);
+      await query('INSERT INTO admin (idU_A) VALUES ($1)', [userId]);
     } else {
       // Create Client (default)
       await query(
-        'INSERT INTO client (user_id) VALUES ($1)',     
+        'INSERT INTO client (idU_cl) VALUES ($1)',     
         [userId]
       );
     }
@@ -129,15 +129,15 @@ export const login = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    // Determine role
+  
     const userId = account.user_id;
     let role = 'client';
     
-    const adminCheck = await query('SELECT id FROM admin WHERE user_id = $1', [userId]);
+    const adminCheck = await query('SELECT idU_A FROM admin WHERE idU_A = $1', [userId]);
     if (adminCheck.rows.length > 0) {
       role = 'admin';
     } else {
-      const providerCheck = await query('SELECT id FROM service_provider WHERE user_id = $1', [userId]);
+      const providerCheck = await query('SELECT idU_SP FROM service_provider WHERE idU_SP = $1', [userId]);
       if (providerCheck.rows.length > 0) {
         role = 'provider';
       }
@@ -184,17 +184,17 @@ export const getProfile = async (req: Request, res: Response): Promise<void> => 
     let profileDetails = null;
     let role = 'client';
 
-    const providerResult = await query('SELECT * FROM service_provider WHERE user_id = $1', [id]);
+    const providerResult = await query('SELECT * FROM service_provider WHERE idU_SP = $1', [id]);
     if (providerResult.rows.length > 0) {
       profileDetails = providerResult.rows[0];
       role = 'provider';
     } else {
-      const adminResult = await query('SELECT id FROM admin WHERE user_id = $1', [id]);
+      const adminResult = await query('SELECT idU_A FROM admin WHERE idU_A = $1', [id]);
       if (adminResult.rows.length > 0) {
         profileDetails = adminResult.rows[0];
         role = 'admin';
       } else {
-        const clientResult = await query('SELECT * FROM client WHERE user_id = $1', [id]);
+        const clientResult = await query('SELECT * FROM client WHERE idU_cl = $1', [id]);
         if (clientResult.rows.length > 0) {
           profileDetails = clientResult.rows[0];
         }

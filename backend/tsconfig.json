@@ -17,10 +17,9 @@
     "noUnusedParameters": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "node",
-    "baseUrl": ".",
+   "moduleResolution": "nodenext", // Changed from "node" to "node10"
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]      // Note the "./" prefix here for clarity
     }
   },
   "include": ["src/**/*"],

@@ -1,55 +1,56 @@
 import { useState, useEffect, useCallback } from 'react';
-import { notificationService } from '../services';
-import { Notification } from '../models';
+import axiosInstance from '@/controllers/api/axiosInstance';
+import type { Notification } from '@/models';
 
 interface UseNotificationsResult {
   notifications: Notification[];
   unreadCount: number;
   isLoading: boolean;
   error: string | null;
-  markAsRead: (id: string) => Promise<void>;
+  markAsRead: (id: number) => Promise<void>;
   markAllAsRead: () => Promise<void>;
-  deleteNotification: (id: string) => Promise<void>;
+  deleteNotification: (id: number) => Promise<void>;
   refresh: () => Promise<void>;
 }
 
 export const useNotifications = (): UseNotificationsResult => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading]         = useState(true);
+  const [error, setError]                 = useState<string | null>(null);
 
   const loadNotifications = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      setIsLoading(true);
-      setError(null);
-      const response = await notificationService.getAll();
-      setNotifications(response.notifications);
+      const res = await axiosInstance.get('/notifications');
+      setNotifications(res.data.notifications ?? []);
     } catch (err: any) {
+      console.error('Load notifications error:', err);
       setError(err.response?.data?.message || 'Failed to load notifications');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
+  useEffect(() => { loadNotifications(); }, [loadNotifications]);
 
-  const markAsRead = useCallback(async (id: string) => {
-    await notificationService.markAsRead(id);
+  // id is integer (DB: notification.id)
+  const markAsRead = useCallback(async (id: number) => {
+    await axiosInstance.patch(`/notifications/${id}/read`);
     setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
   }, []);
 
   const markAllAsRead = useCallback(async () => {
-    await notificationService.markAllAsRead();
+    await axiosInstance.patch('/notifications/read-all');
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
   }, []);
 
-  const deleteNotification = useCallback(async (id: string) => {
-    await notificationService.delete(id);
+  const deleteNotification = useCallback(async (id: number) => {
+    await axiosInstance.delete(`/notifications/${id}`);
     setNotifications(prev => prev.filter(n => n.id !== id));
   }, []);
 
+  // Derived — no extra API call needed
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return {
@@ -63,15 +64,3 @@ export const useNotifications = (): UseNotificationsResult => {
     refresh: loadNotifications,
   };
 };
-
-
-
-
-
-
-
-
-
-
-
-

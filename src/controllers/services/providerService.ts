@@ -63,7 +63,7 @@ export const providerService = {
    * Remove a service from provider's offerings
    */
   removeService: async (service_id: string): Promise<{ success: boolean }> => {
-    const response = await api.delete<{ success: boolean }>(`/providers/my-controllers/services/${service_id}`);
+    const response = await api.delete<{ success: boolean }>(`/providers/my-services/${service_id}`);
     return response.data;
   },
 

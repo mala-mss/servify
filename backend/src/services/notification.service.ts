@@ -1,145 +1,131 @@
-import { Notification } from '../models';
+import { query } from '../db';
+import type { Notification } from '../types';
 
-/**
- * Create a notification for a user
- */
+// ── Core helpers ──────────────────────────────────────────────
+
 export const createNotification = async (data: {
-  user_id: string;
+  user_id: number;
   title: string;
-  message: string;
-  type: 'booking' | 'payment' | 'task' | 'system';
+  description: string;  // DB column is "description", not "message"
+  type: string;
 }): Promise<Notification> => {
-  return await Notification.create(data);
+  const result = await query(
+    `INSERT INTO notification (user_id, title, description, type)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [data.user_id, data.title, data.description, data.type]
+  );
+  return result.rows[0];
 };
 
-/**
- * Create multiple notifications (batch)
- */
 export const createBatchNotifications = async (
   notifications: Array<{
-    user_id: string;
+    user_id: number;
     title: string;
-    message: string;
-    type: 'booking' | 'payment' | 'task' | 'system';
+    description: string;
+    type: string;
   }>
 ): Promise<Notification[]> => {
-  return await Notification.bulkCreate(notifications);
-};
+  if (notifications.length === 0) return [];
 
-/**
- * Mark notification as read
- */
-export const markAsRead = async (notificationId: string, userId: string): Promise<Notification | null> => {
-  const notification = await Notification.findOne({
-    where: {
-      id: notificationId,
-      user_id: userId,
-    },
+  // Build a single multi-row INSERT for efficiency
+  const values: any[] = [];
+  const placeholders = notifications.map((n, i) => {
+    const base = i * 4;
+    values.push(n.user_id, n.title, n.description, n.type);
+    return `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4})`;
   });
 
-  if (!notification) {
-    return null;
-  }
-
-  await notification.update({ is_read: true });
-  return notification;
-};
-
-/**
- * Mark all notifications as read for a user
- */
-export const markAllAsRead = async (userId: string): Promise<number> => {
-  const [affectedCount] = await Notification.update(
-    { is_read: true },
-    { where: { user_id: userId, is_read: false } }
+  const result = await query(
+    `INSERT INTO notification (user_id, title, description, type)
+     VALUES ${placeholders.join(', ')}
+     RETURNING *`,
+    values
   );
-  return affectedCount;
+  return result.rows;
 };
 
-/**
- * Get unread notification count for a user
- */
-export const getUnreadCount = async (userId: string): Promise<number> => {
-  return await Notification.count({
-    where: { user_id: userId, is_read: false },
-  });
+export const markAsRead = async (notificationId: number, userId: number): Promise<Notification | null> => {
+  const result = await query(
+    `UPDATE notification SET is_read = true
+     WHERE id = $1 AND user_id = $2
+     RETURNING *`,
+    [notificationId, userId]
+  );
+  return result.rows[0] ?? null;
 };
 
-/**
- * Delete notification
- */
-export const deleteNotification = async (notificationId: string, userId: string): Promise<boolean> => {
-  const notification = await Notification.findOne({
-    where: {
-      id: notificationId,
-      user_id: userId,
-    },
-  });
-
-  if (!notification) {
-    return false;
-  }
-
-  await notification.destroy();
-  return true;
+export const markAllAsRead = async (userId: number): Promise<number> => {
+  const result = await query(
+    `UPDATE notification SET is_read = true
+     WHERE user_id = $1 AND is_read = false`,
+    [userId]
+  );
+  return result.rowCount ?? 0;
 };
 
-/**
- * Send booking-related notification
- */
+export const getUnreadCount = async (userId: number): Promise<number> => {
+  const result = await query(
+    'SELECT COUNT(*) FROM notification WHERE user_id = $1 AND is_read = false',
+    [userId]
+  );
+  return parseInt(result.rows[0].count, 10);
+};
+
+export const deleteNotification = async (notificationId: number, userId: number): Promise<boolean> => {
+  const result = await query(
+    'DELETE FROM notification WHERE id = $1 AND user_id = $2 RETURNING id',
+    [notificationId, userId]
+  );
+  return (result.rowCount ?? 0) > 0;
+};
+
+// ── Domain-specific senders ───────────────────────────────────
+
+type BookingAction = 'created' | 'accepted' | 'rejected' | 'completed' | 'cancelled';
+type PaymentAction = 'created' | 'completed' | 'failed';
+type TaskAction    = 'assigned' | 'started' | 'completed';
+
 export const sendBookingNotification = async (
-  userId: string,
-  bookingId: string,
-  action: 'created' | 'accepted' | 'rejected' | 'completed' | 'cancelled'
+  userId: number,
+  bookingId: number,
+  action: BookingAction
 ): Promise<Notification> => {
-  const titles = {
-    created: 'New Booking',
-    accepted: 'Booking Accepted',
-    rejected: 'Booking Rejected',
-    completed: 'Booking Completed',
-    cancelled: 'Booking Cancelled',
+  const map: Record<BookingAction, { title: string; description: string }> = {
+    created:   { title: 'New Booking',       description: `A new booking has been created (#${bookingId}).` },
+    accepted:  { title: 'Booking Accepted',  description: `Your booking (#${bookingId}) has been accepted.` },
+    rejected:  { title: 'Booking Rejected',  description: `Your booking (#${bookingId}) has been rejected.` },
+    completed: { title: 'Booking Completed', description: `Your booking (#${bookingId}) has been completed.` },
+    cancelled: { title: 'Booking Cancelled', description: `Your booking (#${bookingId}) has been cancelled.` },
   };
 
-  const messages = {
-    created: `A new booking has been created (ID: ${bookingId}).`,
-    accepted: `Your booking (ID: ${bookingId}) has been accepted.`,
-    rejected: `Your booking (ID: ${bookingId}) has been rejected.`,
-    completed: `Your booking (ID: ${bookingId}) has been completed.`,
-    cancelled: `Your booking (ID: ${bookingId}) has been cancelled.`,
-  };
-
-  return await createNotification({
-    user_id: userId,
-    title: titles[action],
-    message: messages[action],
-    type: 'booking',
-  });
+  return createNotification({ user_id: userId, type: 'booking', ...map[action] });
 };
 
-/**
- * Send payment-related notification
- */
 export const sendPaymentNotification = async (
-  userId: string,
-  paymentId: string,
-  action: 'created' | 'completed' | 'failed'
+  userId: number,
+  paymentId: number,
+  action: PaymentAction
 ): Promise<Notification> => {
-  const titles = {
-    created: 'Payment Received',
-    completed: 'Payment Completed',
-    failed: 'Payment Failed',
+  const map: Record<PaymentAction, { title: string; description: string }> = {
+    created:   { title: 'Payment Received',  description: `A new payment has been recorded (#${paymentId}).` },
+    completed: { title: 'Payment Completed', description: `Your payment (#${paymentId}) was completed successfully.` },
+    failed:    { title: 'Payment Failed',    description: `Your payment (#${paymentId}) failed. Please try again.` },
   };
 
-  const messages = {
-    created: `A new payment has been recorded (ID: ${paymentId}).`,
-    completed: `Your payment (ID: ${paymentId}) has been completed successfully.`,
-    failed: `Your payment (ID: ${paymentId}) has failed. Please try again.`,
+  return createNotification({ user_id: userId, type: 'payment', ...map[action] });
+};
+
+export const sendTaskNotification = async (
+  userId: number,
+  taskId: number,
+  action: TaskAction
+): Promise<Notification> => {
+  const map: Record<TaskAction, { title: string; description: string }> = {
+    assigned:  { title: 'Task Assigned',   description: `A new task has been assigned to you (#${taskId}).` },
+    started:   { title: 'Task Started',    description: `Task #${taskId} has been started.` },
+    completed: { title: 'Task Completed',  description: `Task #${taskId} has been marked as completed.` },
   };
 
-  return await createNotification({
-    user_id: userId,
-    title: titles[action],
-    message: messages[action],
-    type: 'payment',
-  });
+  return createNotification({ user_id: userId, type: 'task', ...map[action] });
 };

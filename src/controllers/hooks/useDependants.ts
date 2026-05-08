@@ -1,91 +1,110 @@
 import { useState, useEffect, useCallback } from 'react';
-import { userService } from '../services';
-import { Dependant, MedicalInfo, AuthorizedPerson } from '../models';
+import axiosInstance from '@/controllers/api/axiosInstance';
+import type { Dependant, MedicalInfo, AuthorizedPerson } from '@/models';
+
+// DB: dependant(id_dep, name, date_of_birth, relationship, id_u_cl)
+// DB: medical_info(id_dep, blood_type, allergies, medications, conditions)
+// DB: authorized_person(id_ap, name, phone_number, national_id, id_u_cl)
 
 interface UseDependantsResult {
   dependants: Dependant[];
   authorizedPeople: AuthorizedPerson[];
   isLoading: boolean;
   error: string | null;
-  addDependant: (data: { first_name: string; last_name: string; date_of_birth: string; relationship: string }) => Promise<void>;
-  updateDependant: (id: string, data: Partial<Dependant>) => Promise<void>;
-  deleteDependant: (id: string) => Promise<void>;
-  getMedicalInfo: (dependantId: string) => Promise<MedicalInfo | null>;
-  updateMedicalInfo: (dependantId: string, data: Partial<MedicalInfo>) => Promise<void>;
-  addAuthorizedPerson: (data: { first_name: string; last_name: string; phone: string; email?: string; relationship: string }) => Promise<void>;
-  updateAuthorizedPerson: (id: string, data: Partial<AuthorizedPerson>) => Promise<void>;
-  removeAuthorizedPerson: (id: string) => Promise<void>;
+  refresh: () => Promise<void>;
+  addDependant: (data: { name: string; date_of_birth: string; relationship: string }) => Promise<void>;
+  updateDependant: (id_dep: number, data: Partial<Dependant>) => Promise<void>;
+  deleteDependant: (id_dep: number) => Promise<void>;
+  getMedicalInfo: (id_dep: number) => Promise<MedicalInfo | null>;
+  updateMedicalInfo: (id_dep: number, data: Partial<MedicalInfo>) => Promise<void>;
+  addAuthorizedPerson: (data: { name: string; phone_number: string; national_id?: string }) => Promise<void>;
+  updateAuthorizedPerson: (id_ap: number, data: Partial<AuthorizedPerson>) => Promise<void>;
+  removeAuthorizedPerson: (id_ap: number) => Promise<void>;
 }
 
 export const useDependants = (): UseDependantsResult => {
-  const [dependants, setDependants] = useState<Dependant[]>([]);
-  const [authorizedPeople, setAuthorizedPeople] = useState<AuthorizedPerson[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [dependants, setDependants]         = useState<Dependant[]>([]);
+  const [authorizedPeople, setAuthorized]   = useState<AuthorizedPerson[]>([]);
+  const [isLoading, setIsLoading]           = useState(true);
+  const [error, setError]                   = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      setIsLoading(true);
-      setError(null);
-      const [dependantsRes, authorizedRes] = await Promise.all([
-        userService.getDependants(),
-        userService.getAuthorizedPeople(),
+      const [depRes, authRes] = await Promise.all([
+        axiosInstance.get('/dependants'),
+        axiosInstance.get('/authorized-persons'),
       ]);
-      setDependants(dependantsRes.dependants);
-      setAuthorizedPeople(authorizedRes.authorizedPeople);
+      setDependants(depRes.data.dependants         ?? []);
+      setAuthorized(authRes.data.authorizedPeople  ?? []);
     } catch (err: any) {
+      console.error('Load dependants error:', err);
       setError(err.response?.data?.message || 'Failed to load data');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  const addDependant = useCallback(async (data: { first_name: string; last_name: string; date_of_birth: string; relationship: string }) => {
-    const response = await userService.addDependant(data);
-    setDependants(prev => [...prev, response.dependant]);
+  // ── Dependants ──────────────────────────────────────────────
+
+  const addDependant = useCallback(async (data: {
+    name: string;           // DB has single "name" column, not first+last
+    date_of_birth: string;
+    relationship: string;
+  }) => {
+    const res = await axiosInstance.post('/dependants', data);
+    setDependants(prev => [...prev, res.data.dependant]);
   }, []);
 
-  const updateDependant = useCallback(async (id: string, data: Partial<Dependant>) => {
-    const response = await userService.updateDependant(id, data);
-    setDependants(prev => prev.map(d => d.id === id ? response.dependant : d));
+  const updateDependant = useCallback(async (id_dep: number, data: Partial<Dependant>) => {
+    const res = await axiosInstance.patch(`/dependants/${id_dep}`, data);
+    setDependants(prev => prev.map(d => d.id_dep === id_dep ? res.data.dependant : d));
   }, []);
 
-  const deleteDependant = useCallback(async (id: string) => {
-    await userService.deleteDependant(id);
-    setDependants(prev => prev.filter(d => d.id !== id));
+  const deleteDependant = useCallback(async (id_dep: number) => {
+    await axiosInstance.delete(`/dependants/${id_dep}`);
+    setDependants(prev => prev.filter(d => d.id_dep !== id_dep));
   }, []);
 
-  const getMedicalInfo = useCallback(async (dependantId: string): Promise<MedicalInfo | null> => {
+  // ── Medical Info ────────────────────────────────────────────
+
+  const getMedicalInfo = useCallback(async (id_dep: number): Promise<MedicalInfo | null> => {
     try {
-      const response = await userService.getMedicalInfo(dependantId);
-      return response.medicalInfo;
+      const res = await axiosInstance.get(`/dependants/${id_dep}/medical`);
+      return res.data.medicalInfo ?? null;
     } catch (err: any) {
+      console.error('Get medical info error:', err);
       return null;
     }
   }, []);
 
-  const updateMedicalInfo = useCallback(async (dependantId: string, data: Partial<MedicalInfo>) => {
-    const response = await userService.updateMedicalInfo(dependantId, data);
-    / Update is handled via getMedicalInfo refetch if needed
+  const updateMedicalInfo = useCallback(async (id_dep: number, data: Partial<MedicalInfo>) => {
+    // DB columns: blood_type, allergies, medications, conditions
+    await axiosInstance.patch(`/dependants/${id_dep}/medical`, data);
   }, []);
 
-  const addAuthorizedPerson = useCallback(async (data: { first_name: string; last_name: string; phone: string; email?: string; relationship: string }) => {
-    const response = await userService.addAuthorizedPerson(data);
-    setAuthorizedPeople(prev => [...prev, response.authorizedPerson]);
+  // ── Authorized Persons ──────────────────────────────────────
+
+  const addAuthorizedPerson = useCallback(async (data: {
+    name: string;           // DB has single "name" column
+    phone_number: string;   // DB column is phone_number, not phone
+    national_id?: string;
+  }) => {
+    const res = await axiosInstance.post('/authorized-persons', data);
+    setAuthorized(prev => [...prev, res.data.authorizedPerson]);
   }, []);
 
-  const updateAuthorizedPerson = useCallback(async (id: string, data: Partial<AuthorizedPerson>) => {
-    const response = await userService.updateAuthorizedPerson(id, data);
-    setAuthorizedPeople(prev => prev.map(a => a.id === id ? response.authorizedPerson : a));
+  const updateAuthorizedPerson = useCallback(async (id_ap: number, data: Partial<AuthorizedPerson>) => {
+    const res = await axiosInstance.patch(`/authorized-persons/${id_ap}`, data);
+    setAuthorized(prev => prev.map(a => a.id_ap === id_ap ? res.data.authorizedPerson : a));
   }, []);
 
-  const removeAuthorizedPerson = useCallback(async (id: string) => {
-    await userService.removeAuthorizedPerson(id);
-    setAuthorizedPeople(prev => prev.filter(a => a.id !== id));
+  const removeAuthorizedPerson = useCallback(async (id_ap: number) => {
+    await axiosInstance.delete(`/authorized-persons/${id_ap}`);
+    setAuthorized(prev => prev.filter(a => a.id_ap !== id_ap));
   }, []);
 
   return {
@@ -93,6 +112,7 @@ export const useDependants = (): UseDependantsResult => {
     authorizedPeople,
     isLoading,
     error,
+    refresh: loadData,
     addDependant,
     updateDependant,
     deleteDependant,
@@ -103,15 +123,3 @@ export const useDependants = (): UseDependantsResult => {
     removeAuthorizedPerson,
   };
 };
-
-
-
-
-
-
-
-
-
-
-
-

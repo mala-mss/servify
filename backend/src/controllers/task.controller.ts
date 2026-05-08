@@ -1,16 +1,15 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { Task, User, Service, Booking, Notification, Payment } from '../models';
+import { Task, User, Notification } from '../models';
 import { AppError } from '../middleware/errorHandler';
 
 export const getAllTasks = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { status, date, providerId, clientId } = req.query;
+  const { status, idU_cl, idU_SP } = req.query;
 
   const where: any = {};
   if (status) where.status = status;
-  if (date) where.date = date;
-  if (providerId) where.service_provider_id = providerId;
-  if (clientId) where.client_id = clientId;
+  if (idU_cl) where.idU_cl = idU_cl;
+  if (idU_SP) where.idU_SP = idU_SP;
 
   const tasks = await Task.findAll({
     where,
@@ -25,11 +24,12 @@ export const getAllTasks = async (req: AuthRequest, res: Response): Promise<void
 };
 
 export const getTaskById = async (req: AuthRequest, res: Response): Promise<void> => {
-  const task = await Task.findByPk(req.params.id, {
+  const { idT, idU_cl, idU_SP } = req.params;
+  const task = await Task.findOne({
+    where: { idT, idU_cl, idU_SP },
     include: [
       { model: User, as: 'client', attributes: ['id', 'fname', 'lname', 'profile_picture', 'phone_number', 'email'] },
       { model: User, as: 'provider', attributes: ['id', 'fname', 'lname', 'profile_picture', 'phone_number', 'email'] },
-      { model: Booking, as: 'booking' },
     ],
   });
 
@@ -41,7 +41,7 @@ export const getTaskById = async (req: AuthRequest, res: Response): Promise<void
 };
 
 export const createTask = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { name, start_time, end_time, duration, client_id, service_provider_id } = req.body;
+  const { name, start_time, end_time, duration, idU_cl, idU_SP } = req.body;
   
   const task = await Task.create({
     name: name || 'Service Task',
@@ -49,12 +49,12 @@ export const createTask = async (req: AuthRequest, res: Response): Promise<void>
     end_time,
     duration,
     status: 'not_started',
-    client_id,
-    service_provider_id,
+    idU_cl,
+    idU_SP,
   });
 
   await Notification.create({
-    user_id: service_provider_id,
+    user_id: idU_SP,
     type: 'task',
     title: 'New Task Assigned',
     description: `You have a new task assigned to you`,
@@ -67,10 +67,10 @@ export const createTask = async (req: AuthRequest, res: Response): Promise<void>
 };
 
 export const updateTask = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { idT, idU_cl, idU_SP } = req.params;
   const { status, name, start_time, end_time, duration } = req.body;
 
-  const task = await Task.findByPk(id);
+  const task = await Task.findOne({ where: { idT, idU_cl, idU_SP } });
   if (!task) {
     throw new AppError('Task not found', 404);
   }
@@ -93,14 +93,14 @@ export const updateTask = async (req: AuthRequest, res: Response): Promise<void>
 };
 
 export const deleteTask = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id } = req.params;
+  const { idT, idU_cl, idU_SP } = req.params;
 
-  const task = await Task.findByPk(id);
+  const task = await Task.findOne({ where: { idT, idU_cl, idU_SP } });
   if (!task) {
     throw new AppError('Task not found', 404);
   }
 
-  const isAdmin = req.user!.role === 'admin';
+  const isAdmin = req.userRole === 'admin';
   if (!isAdmin) {
     throw new AppError('Unauthorized', 403);
   }
@@ -111,10 +111,10 @@ export const deleteTask = async (req: AuthRequest, res: Response): Promise<void>
 };
 
 export const getProviderTasks = async (req: AuthRequest, res: Response): Promise<void> => {
-  const service_provider_id = parseInt(req.params.providerId) || req.user!.id;
+  const idU_SP = parseInt(req.params.providerId) || req.userId;
 
   const tasks = await Task.findAll({
-    where: { service_provider_id },
+    where: { idU_SP },
     include: [
       { model: User, as: 'client', attributes: ['id', 'fname', 'lname', 'profile_picture'] },
     ],
@@ -125,10 +125,10 @@ export const getProviderTasks = async (req: AuthRequest, res: Response): Promise
 };
 
 export const getClientTasks = async (req: AuthRequest, res: Response): Promise<void> => {
-  const client_id = parseInt(req.params.clientId) || req.user!.id;
+  const idU_cl = parseInt(req.params.clientId) || req.userId;
 
   const tasks = await Task.findAll({
-    where: { client_id },
+    where: { idU_cl },
     include: [
       { model: User, as: 'provider', attributes: ['id', 'fname', 'lname', 'profile_picture'] },
     ],

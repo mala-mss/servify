@@ -78,7 +78,7 @@ const Register = () => {
     setLoading(true);
 
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http:/localhost:5000/api';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
       await axios.post(`${apiUrl}/auth/register`, { ...formData, role });
       
       alert('Registration successful! Please login.');

@@ -2,37 +2,37 @@ import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/database';
 
 interface ServiceProviderServiceAttributes {
-  service_provider_id: number;
-  service_id: number;
+  idU_SP: number;
+  id_S: number;
 }
 
 export class ServiceProviderService extends Model<ServiceProviderServiceAttributes> implements ServiceProviderServiceAttributes {
-  public service_provider_id!: number;
-  public service_id!: number;
+  public idU_SP!: number;
+  public id_S!: number;
 }
 
 ServiceProviderService.init(
   {
-    service_provider_id: {
+    idU_SP: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       references: {
         model: 'service_provider',
-        key: 'id',
+        key: 'idU_SP',
       },
     },
-    service_id: {
+    id_S: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       references: {
         model: 'service',
-        key: 'id_service',
+        key: 'id_S',
       },
     },
   },
   {
     sequelize,
-    tableName: 'service_provider_service',
+    tableName: 'providing',
     timestamps: false,
   }
 );

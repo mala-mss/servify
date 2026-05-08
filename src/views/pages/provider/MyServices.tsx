@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from "@/controllers/context/ThemeContext";
 import axiosInstance from "@/controllers/api/axiosInstance";
+import { serviceService } from '@/controllers/services/serviceService';
 
 interface Service {
   id_service: number;
@@ -19,12 +20,11 @@ export default function MyServices() {
   const fetchMyServices = async () => {
     try {
       setLoading(true);
-      const response = await axiosInstance.get("/providers/my-services");
-      if (response.data.success) {
-        setServices(response.data.services);
-      }
+      const data = await serviceService.getMyServices();
+       setServices(data.services || []);
     } catch (error) {
       console.error("Failed to fetch my services:", error);
+      setServices([]);
     } finally {
       setLoading(false);
     }
@@ -37,7 +37,7 @@ export default function MyServices() {
   const handleDelete = async (id: number) => {
     if (!window.confirm("Are you sure you want to remove this service from your profile?")) return;
     try {
-      await axiosInstance.delete(`/providers/my-controllers/services/${id}`);
+      await axiosInstance.delete(`/providers/my-services/${id}`);
       fetchMyServices();
     } catch (error) {
       console.error("Failed to delete service:", error);
@@ -99,7 +99,8 @@ export default function MyServices() {
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px', color: p.textMuted }}>Loading your services...</div>
-      ) : services.length === 0 ? (
+      ) 
+      : services.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '80px', background: p.cardBg, border: `1px dashed ${p.border}`, borderRadius: 12 }}>
             <p style={{ color: p.textMuted, marginBottom: 20 }}>You haven't listed any services yet.</p>
             <button style={{ ...primaryButtonStyle, width: "auto" }} onClick={() => window.location.href = '/provider/add-service'}>Add your first service</button>

@@ -2,26 +2,26 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface AuthorizedPersonAttributes {
-  id: number;
+  id_AP: number;
   name?: string;
   phone_number?: string;
   national_id?: string;
-  client_id: number;
+  id_U_CL: number;
 }
 
-interface AuthorizedPersonCreationAttributes extends Optional<AuthorizedPersonAttributes, 'id' | 'name' | 'phone_number' | 'national_id'> {}
+interface AuthorizedPersonCreationAttributes extends Optional<AuthorizedPersonAttributes, 'id_AP' | 'name' | 'phone_number' | 'national_id'> {}
 
 export class AuthorizedPerson extends Model<AuthorizedPersonAttributes, AuthorizedPersonCreationAttributes> implements AuthorizedPersonAttributes {
-  public id!: number;
+  public id_AP!: number;
   public name?: string;
   public phone_number?: string;
   public national_id?: string;
-  public client_id!: number;
+  public id_U_CL!: number;
 }
 
 AuthorizedPerson.init(
   {
-    id: {
+    id_AP: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
@@ -35,12 +35,12 @@ AuthorizedPerson.init(
     national_id: {
       type: DataTypes.STRING(50),
     },
-    client_id: {
+    id_U_CL: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'client',
-        key: 'id_client',
+        key: 'idU_cl',
       },
     },
   },

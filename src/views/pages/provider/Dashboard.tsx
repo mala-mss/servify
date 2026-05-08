@@ -40,12 +40,12 @@ export default function Dashboard() {
     fetchDashboardData();
   }, []);
 
-  const handleAction = async (id: number, status: string) => {
+  const handleAction = async (id_b: number, status: string) => {
     try {
-      await axiosInstance.put(`/bookings/${id}/status`, { status });
+      await axiosInstance.put(`/bookings/${id_b}/status`, { status });
       fetchDashboardData();
     } catch (error) {
-      console.error(`Failed to ${status} booking:`, error);
+      console.error(`Failed to update booking status:`, error);
     }
   };
 
@@ -68,7 +68,7 @@ export default function Dashboard() {
     pendingRequestsCount: 0,
     totalEarnings: 0,
     rating: 0,
-    reviewCount: 0
+    review_count: 0
   };
 
   return (
@@ -103,7 +103,7 @@ export default function Dashboard() {
       {/* WELCOME HEADER */}
       <div style={{ marginBottom: 32 }}>
         <h1 style={{ fontFamily: "'Instrument Serif', serif", fontSize: 32, fontWeight: 400, color: p.text, marginBottom: 8 }}>
-          Welcome back, {user?.name?.split(' ')[0] || 'Provider'}
+          Welcome back, {user?.fname || 'Provider'}
         </h1>
         <p style={{ fontSize: 14, color: p.textMuted }}>
           You have <span style={{ color: p.primary, fontWeight: 500 }}>{stats.todayJobsCount} jobs</span> scheduled for today and <span style={{ color: "#fb923c", fontWeight: 500 }}>{stats.pendingRequestsCount} new requests</span>.
@@ -113,10 +113,10 @@ export default function Dashboard() {
       {/* STATS ROW */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 32 }}>
         {[
-          { icon: "▣", label: "Today's Jobs",      val: stats.todayJobsCount,   sub: "Upcoming activities",  color: p.primary },
-          { icon: "◎", label: "Pending Requests",  val: stats.pendingRequestsCount,   sub: "Requires action",        color: "#fb923c" },
-          { icon: "◈", label: "Total Earnings",    val: `${stats.totalEarnings} DZD`, sub: "From completed jobs", color: p.secondary },
-          { icon: "◉", label: "Avg Rating",        val: stats.rating || "0.0", sub: `From ${stats.reviewCount || 0} reviews`,        color: "#facc15" },
+          { icon: "▣", label: "Today's Jobs",      val: stats.todayJobsCount,        sub: "Upcoming activities",     color: p.primary  },
+          { icon: "◎", label: "Pending Requests",  val: stats.pendingRequestsCount,  sub: "Requires action",         color: "#fb923c"  },
+          { icon: "◈", label: "Total Earnings",    val: `${stats.totalEarnings} DZD`,sub: "From completed jobs",     color: p.secondary},
+          { icon: "◉", label: "Avg Rating",        val: stats.rating || "0.0",       sub: `From ${stats.review_count || 0} reviews`, color: "#facc15" },
         ].map((s) => (
           <div key={s.label} className="stat-card" style={cardStyle}>
             <div style={{ 
@@ -147,7 +147,7 @@ export default function Dashboard() {
             ) : data?.todaysJobs.map((job: any) => {
               const s = STATUS_BADGE[job.status as JobStatus] || STATUS_BADGE.pending;
               return (
-                <div key={job.id_booking} className="job-card" style={{ ...cardStyle, padding: "16px 20px", cursor: "pointer" }}>
+                <div key={job.id_b} className="job-card" style={{ ...cardStyle, padding: "16px 20px", cursor: "pointer" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                     <span style={{ fontSize: 14, fontWeight: 600, color: p.text }}>{job.client_name}</span>
                     <span style={{ fontSize: 10, fontWeight: 600, padding: "4px 10px", borderRadius: 20, color: s.color, background: s.bg, textTransform: "uppercase", letterSpacing: 0.5 }}>{s.label}</span>
@@ -157,6 +157,9 @@ export default function Dashboard() {
                     <span style={{ width: 4, height: 4, borderRadius: "50%", background: p.border }} />
                     <span>{job.service_name}</span>
                   </div>
+                  {job.address && (
+                    <div style={{ fontSize: 12, color: p.textMuted, marginTop: 6 }}>📍 {job.address}</div>
+                  )}
                 </div>
               );
             })}
@@ -175,7 +178,7 @@ export default function Dashboard() {
             {data?.pendingRequests.length === 0 ? (
               <div style={{ ...cardStyle, textAlign: 'center', color: p.textMuted, fontSize: 14 }}>No new requests</div>
             ) : data?.pendingRequests.map((r: any) => (
-              <div key={r.id_booking} style={{ ...cardStyle, padding: "16px 20px" }}>
+              <div key={r.id_r} style={{ ...cardStyle, padding: "16px 20px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                   <span style={{ fontSize: 14, fontWeight: 600, color: p.text }}>{r.client_name}</span>
                   <span style={{ fontSize: 12, color: p.primary, fontWeight: 500 }}>{r.amount} DZD</span>
@@ -183,16 +186,19 @@ export default function Dashboard() {
                 <div style={{ fontSize: 13, color: p.textMuted, marginBottom: 16 }}>
                   {r.service_name} · {new Date(r.date).toLocaleDateString()} at {r.time}
                 </div>
+                {r.duration && (
+                  <div style={{ fontSize: 12, color: p.textMuted, marginBottom: 12 }}>⏱ Duration: {r.duration}</div>
+                )}
                 <div style={{ display: "flex", gap: 10 }}>
                   <button 
-                    onClick={() => handleAction(r.id_booking, 'confirmed')}
+                    onClick={() => handleAction(r.id_r, 'confirmed')}
                     className="action-btn accept-btn" 
                     style={{ flex: 1, padding: "8px", background: "rgba(74,222,128,.1)", border: "1px solid rgba(74,222,128,.2)", borderRadius: 10, fontSize: 13, color: "#4ade80", cursor: "pointer", fontWeight: 600 }}
                   >
                     Accept
                   </button>
                   <button 
-                    onClick={() => handleAction(r.id_booking, 'cancelled')}
+                    onClick={() => handleAction(r.id_r, 'cancelled')}
                     className="action-btn decline-btn" 
                     style={{ padding: "8px 16px", background: "rgba(248,113,113,.05)", border: "1px solid rgba(248,113,113,.15)", borderRadius: 10, fontSize: 13, color: "#f87171", cursor: "pointer", fontWeight: 500 }}
                   >
@@ -208,15 +214,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-

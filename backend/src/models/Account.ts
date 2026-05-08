@@ -6,17 +6,19 @@ interface AccountAttributes {
   password: string;
   status: string;
   nbr_warning: number;
-  date_creation: Date;
+  created_at: Date;
+  updated_at: Date;
 }
 
-interface AccountCreationAttributes extends Optional<AccountAttributes, 'status' | 'nbr_warning' | 'date_creation'> {}
+interface AccountCreationAttributes extends Optional<AccountAttributes, 'status' | 'nbr_warning' | 'created_at' | 'updated_at'> {}
 
 export class Account extends Model<AccountAttributes, AccountCreationAttributes> implements AccountAttributes {
   public email!: string;
   public password!: string;
   public status!: string;
   public nbr_warning!: number;
-  public date_creation!: Date;
+  public readonly created_at!: Date;
+  public readonly updated_at!: Date;
 }
 
 Account.init(
@@ -37,7 +39,11 @@ Account.init(
       type: DataTypes.INTEGER,
       defaultValue: 0,
     },
-    date_creation: {
+    created_at: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },

@@ -1,68 +1,78 @@
 import { useState, useEffect, useCallback } from 'react';
-import { serviceService } from '../services';
-import { Service, ServiceCategory } from '../models';
+import axiosInstance from '@/controllers/api/axiosInstance';
+import type { Service, ServiceCategory } from '@/models';
+
+// DB: service(id_s, name, description, base_price, id_c)
+// DB: service_category(id_c, name, target_demographics, policies, icon)
 
 interface UseServicesResult {
   services: Service[];
   categories: ServiceCategory[];
   isLoading: boolean;
   error: string | null;
-  getServiceById: (id: string) => Promise<Service | null>;
-  createService: (data: { name: string; description: string; base_price: number; category_id_fk: string }) => Promise<void>;
-  updateService: (id: string, data: Partial<Service>) => Promise<void>;
-  deleteService: (id: string) => Promise<void>;
+  refresh: () => Promise<void>;
+  getServiceById: (id_s: number) => Promise<Service | null>;
+  createService: (data: { name: string; description?: string; base_price?: number; id_c?: number }) => Promise<void>;
+  updateService: (id_s: number, data: Partial<Service>) => Promise<void>;
+  deleteService: (id_s: number) => Promise<void>;
 }
 
 export const useServices = (): UseServicesResult => {
-  const [services, setServices] = useState<Service[]>([]);
+  const [services, setServices]     = useState<Service[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading]   = useState(true);
+  const [error, setError]           = useState<string | null>(null);
 
   const loadServices = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
     try {
-      setIsLoading(true);
-      setError(null);
       const [servicesRes, categoriesRes] = await Promise.all([
-        serviceService.getAll(),
-        serviceService.getCategories(),
+        axiosInstance.get('/services'),
+        axiosInstance.get('/services/categories'),
       ]);
-      setServices(servicesRes.services);
-      setCategories(categoriesRes.categories);
+      setServices(servicesRes.data.services       ?? []);
+      setCategories(categoriesRes.data.categories ?? []);
     } catch (err: any) {
+      console.error('Load services error:', err);
       setError(err.response?.data?.message || 'Failed to load services');
     } finally {
       setIsLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadServices();
-  }, [loadServices]);
+  useEffect(() => { loadServices(); }, [loadServices]);
 
-  const getServiceById = useCallback(async (id: string): Promise<Service | null> => {
+  // id_s is integer PK on service table
+  const getServiceById = useCallback(async (id_s: number): Promise<Service | null> => {
     try {
-      const response = await serviceService.getById(id);
-      return response.service;
+      const res = await axiosInstance.get(`/services/${id_s}`);
+      return res.data.service ?? null;
     } catch (err: any) {
+      console.error('Get service error:', err);
       setError(err.response?.data?.message || 'Failed to load service');
       return null;
     }
   }, []);
 
-  const createService = useCallback(async (data: { name: string; description: string; base_price: number; category_id_fk: string }) => {
-    const response = await serviceService.create(data);
-    setServices(prev => [...prev, response.service]);
+  const createService = useCallback(async (data: {
+    name: string;
+    description?: string;
+    base_price?: number;
+    id_c?: number;        // FK → service_category.id_c (not category_id_fk)
+  }) => {
+    const res = await axiosInstance.post('/services', data);
+    setServices(prev => [...prev, res.data.service]);
   }, []);
 
-  const updateService = useCallback(async (id: string, data: Partial<Service>) => {
-    const response = await serviceService.update(id, data);
-    setServices(prev => prev.map(s => s.id === id ? response.service : s));
+  const updateService = useCallback(async (id_s: number, data: Partial<Service>) => {
+    const res = await axiosInstance.patch(`/services/${id_s}`, data);
+    setServices(prev => prev.map(s => s.id_s === id_s ? res.data.service : s));
   }, []);
 
-  const deleteService = useCallback(async (id: string) => {
-    await serviceService.delete(id);
-    setServices(prev => prev.filter(s => s.id !== id));
+  const deleteService = useCallback(async (id_s: number) => {
+    await axiosInstance.delete(`/services/${id_s}`);
+    setServices(prev => prev.filter(s => s.id_s !== id_s));
   }, []);
 
   return {
@@ -70,21 +80,10 @@ export const useServices = (): UseServicesResult => {
     categories,
     isLoading,
     error,
+    refresh: loadServices,
     getServiceById,
     createService,
     updateService,
     deleteService,
   };
 };
-
-
-
-
-
-
-
-
-
-
-
-

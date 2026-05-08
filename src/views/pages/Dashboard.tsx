@@ -70,7 +70,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  const p = PALETTES["dark"];
+  const p = PALETTES["dark"]; 
 
   useEffect(() => {
     const fetchData = async () => {

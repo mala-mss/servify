@@ -2,37 +2,51 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface BookingRequestAttributes {
-  id: number;
+  id_R: number;
+  idU_cl: number;
+  idU_SP: number;
   date: Date;
   time: string;
   duration?: string;
   status: string;
-  client_id_fk: number;
-  service_provider_id_fk: number;
   service_id?: number;
-  document_id?: number;
 }
 
-interface BookingRequestCreationAttributes extends Optional<BookingRequestAttributes, 'id' | 'duration' | 'status' | 'service_id' | 'document_id'> {}
+interface BookingRequestCreationAttributes extends Optional<BookingRequestAttributes, 'id_R' | 'duration' | 'status' | 'service_id'> {}
 
 export class BookingRequest extends Model<BookingRequestAttributes, BookingRequestCreationAttributes> implements BookingRequestAttributes {
-  public id!: number;
+  public id_R!: number;
+  public idU_cl!: number;
+  public idU_SP!: number;
   public date!: Date;
   public time!: string;
   public duration?: string;
   public status!: string;
-  public client_id_fk!: number;
-  public service_provider_id_fk!: number;
   public service_id?: number;
-  public document_id?: number;
 }
 
 BookingRequest.init(
   {
-    id: {
+    id_R: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    idU_cl: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      references: {
+        model: 'client',
+        key: 'idU_cl',
+      },
+    },
+    idU_SP: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      references: {
+        model: 'service_provider',
+        key: 'idU_SP',
+      },
     },
     date: {
       type: DataTypes.DATEONLY,
@@ -43,40 +57,17 @@ BookingRequest.init(
       allowNull: false,
     },
     duration: {
-      type: DataTypes.STRING, // Sequelize doesn't have a native INTERVAL type for all DBs, often mapped to STRING or Custom
+      type: DataTypes.STRING, 
     },
     status: {
       type: DataTypes.STRING(20),
       defaultValue: 'pending',
     },
-    client_id_fk: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'client',
-        key: 'id_client',
-      },
-    },
-    service_provider_id_fk: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'service_provider',
-        key: 'id',
-      },
-    },
     service_id: {
       type: DataTypes.INTEGER,
       references: {
         model: 'service',
-        key: 'id_service',
-      },
-    },
-    document_id: {
-      type: DataTypes.INTEGER,
-      references: {
-        model: 'document',
-        key: 'id',
+        key: 'id_S',
       },
     },
   },

@@ -2,8 +2,8 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface ReportAttributes {
-  reporter_email: string;
-  reported_email: string;
+  id_reporter: string;
+  id_reported: string;
   reason?: string;
   description?: string;
   created_at: Date;
@@ -12,8 +12,8 @@ interface ReportAttributes {
 interface ReportCreationAttributes extends Optional<ReportAttributes, 'reason' | 'description' | 'created_at'> {}
 
 export class Report extends Model<ReportAttributes, ReportCreationAttributes> implements ReportAttributes {
-  public reporter_email!: string;
-  public reported_email!: string;
+  public id_reporter!: string;
+  public id_reported!: string;
   public reason?: string;
   public description?: string;
   public readonly created_at!: Date;
@@ -21,7 +21,7 @@ export class Report extends Model<ReportAttributes, ReportCreationAttributes> im
 
 Report.init(
   {
-    reporter_email: {
+    id_reporter: {
       type: DataTypes.STRING(100),
       primaryKey: true,
       references: {
@@ -29,7 +29,7 @@ Report.init(
         key: 'email',
       },
     },
-    reported_email: {
+    id_reported: {
       type: DataTypes.STRING(100),
       primaryKey: true,
       references: {

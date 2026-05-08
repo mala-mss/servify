@@ -1,139 +1,224 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
-import { Payment, Booking, User } from '../models';
-import { AppError } from '../middleware/errorHandler';
+import { query } from '../db';
 
+// ── GET /payments  (admin only) ───────────────────────────────
 export const getAllTransactions = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { userId, status, bookingId } = req.query;
+  const { status } = req.query;
 
-  const where: any = {};
-  if (userId) where.userId = userId;
-  if (status) where.status = status;
-  if (bookingId) where.booking_id = bookingId;
+  try {
+    const params: any[] = [];
+    let whereClause = '';
 
-  const payments = await Payment.findAll({
-    where,
-    include: [
-      { model: Booking, as: 'booking', attributes: ['id', 'start_date', 'end_date', 'status', 'total_price'] },
-    ],
-    order: [['createdAt', 'DESC']],
-  });
+    if (status) {
+      params.push(status);
+      whereClause = `WHERE p.status = $${params.length}`;
+    }
 
-  res.json({ payments });
+    const result = await query(
+      `SELECT p.id_p,
+              p.amount,
+              p.currency,
+              p.status,
+              p.payment_method,
+              p.created_at,
+              s.id_s,
+              s.name   AS service_name,
+              s.base_price
+       FROM payment p
+       LEFT JOIN service s ON p.id_s = s.id_s
+       ${whereClause}
+       ORDER BY p.created_at DESC`,
+      params
+    );
+
+    res.json({ success: true, payments: result.rows });
+  } catch (error: any) {
+    console.error('Get all transactions error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
+// ── GET /payments/:id ─────────────────────────────────────────
 export const getTransactionById = async (req: AuthRequest, res: Response): Promise<void> => {
-  const payment = await Payment.findByPk(req.params.id, {
-    include: [
-      { model: Booking, as: 'booking', attributes: ['id', 'start_date', 'end_date', 'status', 'total_price'] },
-    ],
-  });
+  const { id } = req.params;
 
-  if (!payment) {
-    throw new AppError('Payment not found', 404);
+  try {
+    const result = await query(
+      `SELECT p.id_p,
+              p.amount,
+              p.currency,
+              p.status,
+              p.payment_method,
+              p.created_at,
+              s.id_s,
+              s.name        AS service_name,
+              s.description AS service_description,
+              s.base_price
+       FROM payment p
+       LEFT JOIN service s ON p.id_s = s.id_s
+       WHERE p.id_p = $1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ message: 'Payment not found' });
+      return;
+    }
+
+    res.json({ success: true, payment: result.rows[0] });
+  } catch (error: any) {
+    console.error('Get transaction by id error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+// ── POST /payments  (admin only) ──────────────────────────────
+export const createTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id_s, amount, payment_method, status } = req.body;
+
+  if (!amount) {
+    res.status(400).json({ message: 'amount is required' });
+    return;
   }
 
-  res.json({ payment });
+  try {
+    const result = await query(
+      `INSERT INTO payment (id_s, amount, payment_method, status)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [id_s ?? null, amount, payment_method ?? null, status ?? 'unpaid']
+    );
+
+    res.status(201).json({ message: 'Payment created successfully', payment: result.rows[0] });
+  } catch (error: any) {
+    console.error('Create transaction error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
-export const createTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { booking_id, amount, payment_method, status } = req.body;
-
-  const payment = await Payment.create({
-    booking_id,
-    amount,
-    payment_method,
-    status: status || 'pending',
-  });
-
-  res.status(201).json({
-    message: 'Payment created successfully',
-    payment,
-  });
-};
-
+// ── PATCH /payments/:id  (admin only) ────────────────────────
 export const updateTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id } = req.params;
   const { status, payment_method } = req.body;
 
-  const payment = await Payment.findByPk(id);
-  if (!payment) {
-    throw new AppError('Payment not found', 404);
+  if (req.user?.role !== 'admin') {
+    res.status(403).json({ message: 'Unauthorized' });
+    return;
   }
 
-  const isAdmin = req.user!.role === 'admin';
-  if (!isAdmin) {
-    throw new AppError('Unauthorized', 403);
+  try {
+    const result = await query(
+      `UPDATE payment
+       SET status         = COALESCE($1, status),
+           payment_method = COALESCE($2, payment_method)
+       WHERE id_p = $3
+       RETURNING *`,
+      [status ?? null, payment_method ?? null, id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ message: 'Payment not found' });
+      return;
+    }
+
+    res.json({ message: 'Payment updated successfully', payment: result.rows[0] });
+  } catch (error: any) {
+    console.error('Update transaction error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  await payment.update({
-    status: status || payment.status,
-    payment_method: payment_method || payment.payment_method,
-  });
-
-  res.json({
-    message: 'Payment updated successfully',
-    payment,
-  });
 };
 
+// ── DELETE /payments/:id  (admin only) ───────────────────────
 export const deleteTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id } = req.params;
 
-  const payment = await Payment.findByPk(id);
-  if (!payment) {
-    throw new AppError('Payment not found', 404);
+  if (req.user?.role !== 'admin') {
+    res.status(403).json({ message: 'Unauthorized' });
+    return;
   }
 
-  const isAdmin = req.user!.role === 'admin';
-  if (!isAdmin) {
-    throw new AppError('Unauthorized', 403);
+  try {
+    const result = await query(
+      'DELETE FROM payment WHERE id_p = $1 RETURNING id_p',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ message: 'Payment not found' });
+      return;
+    }
+
+    res.json({ message: 'Payment deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete transaction error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  await payment.destroy();
-
-  res.json({ message: 'Payment deleted successfully' });
 };
 
+// ── GET /payments/user/:userId  ───────────────────────────────
+// Payments for services booked by a specific client,
+// resolved via: booking → booking_request → payment(id_s)
 export const getUserTransactions = async (req: AuthRequest, res: Response): Promise<void> => {
-  const userId = req.params.userId || req.user!.id;
+  const userId = req.params.userId || req.userId;
 
-  const payments = await Payment.findAll({
-    include: [
-      {
-        model: Booking,
-        as: 'booking',
-        where: { client_id: userId },
-        attributes: ['id', 'start_date', 'end_date', 'status', 'total_price']
-      },
-    ],
-    order: [['createdAt', 'DESC']],
-    limit: 50,
-  });
+  try {
+    const result = await query(
+      `SELECT p.id_p,
+              p.amount,
+              p.currency,
+              p.status,
+              p.payment_method,
+              p.created_at,
+              s.name AS service_name,
+              b.date AS booking_date,
+              b.time AS booking_time
+       FROM payment p
+       JOIN service s       ON p.id_s  = s.id_s
+       JOIN booking_request br ON br.service_id = s.id_s AND br.idu_cl = $1
+       JOIN booking b       ON b.idu_cl = br.idu_cl AND b.idu_sp = br.idu_sp
+       ORDER BY p.created_at DESC
+       LIMIT 50`,
+      [userId]
+    );
 
-  res.json({ payments });
+    res.json({ success: true, payments: result.rows });
+  } catch (error: any) {
+    console.error('Get user transactions error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
 };
 
+// ── GET /payments/summary/:userId  ───────────────────────────
 export const getTransactionSummary = async (req: AuthRequest, res: Response): Promise<void> => {
   const { userId } = req.params;
 
-  const where: any = {};
-  if (userId) {
-    // Get payments for user's bookings
-    const userBookings = await Booking.findAll({ where: { client_id: userId }, attributes: ['id'] });
-    where.booking_id = userBookings.map((b: any) => b.id);
+  try {
+    const result = await query(
+      `SELECT
+         COUNT(*)                                            AS total_count,
+         COALESCE(SUM(p.amount), 0)                        AS total,
+         COALESCE(SUM(CASE WHEN p.status = 'paid'   THEN p.amount ELSE 0 END), 0) AS paid,
+         COALESCE(SUM(CASE WHEN p.status = 'unpaid' THEN p.amount ELSE 0 END), 0) AS unpaid
+       FROM payment p
+       JOIN service s       ON p.id_s = s.id_s
+       JOIN booking_request br ON br.service_id = s.id_s AND br.idu_cl = $1`,
+      [userId]
+    );
+
+    const row = result.rows[0];
+    res.json({
+      success: true,
+      summary: {
+        total_count : parseInt(row.total_count, 10),
+        total  : parseFloat(row.total),
+        paid   : parseFloat(row.paid),
+        unpaid : parseFloat(row.unpaid),
+        currency: 'DZD'
+      }
+    });
+  } catch (error: any) {
+    console.error('Get transaction summary error:', error);
+    res.status(500).json({ message: 'Internal server error' });
   }
-
-  const payments = await Payment.findAll({ where });
-
-  const total = payments.reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
-  const pending = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
-  const paid = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
-
-  res.json({
-    total: total.toFixed(2),
-    pending: pending.toFixed(2),
-    paid: paid.toFixed(2),
-    count: payments.length,
-  });
 };

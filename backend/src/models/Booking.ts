@@ -2,35 +2,49 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface BookingAttributes {
-  id_booking: number;
+  id_B: number;
+  idU_cl: number;
+  idU_SP: number;
   date: Date;
   time: string;
   address?: string;
   status: string;
-  client_id: number;
-  service_provider_id: number;
-  service_id?: number;
 }
 
-interface BookingCreationAttributes extends Optional<BookingAttributes, 'id_booking' | 'address' | 'status' | 'service_id'> {}
+interface BookingCreationAttributes extends Optional<BookingAttributes, 'id_B' | 'address' | 'status'> {}
 
 export class Booking extends Model<BookingAttributes, BookingCreationAttributes> implements BookingAttributes {
-  public id_booking!: number;
+  public id_B!: number;
+  public idU_cl!: number;
+  public idU_SP!: number;
   public date!: Date;
   public time!: string;
   public address?: string;
   public status!: string;
-  public client_id!: number;
-  public service_provider_id!: number;
-  public service_id?: number;
 }
 
 Booking.init(
   {
-    id_booking: {
+    id_B: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+    },
+    idU_cl: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      references: {
+        model: 'client',
+        key: 'idU_cl',
+      },
+    },
+    idU_SP: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      references: {
+        model: 'service_provider',
+        key: 'idU_SP',
+      },
     },
     date: {
       type: DataTypes.DATEONLY,
@@ -46,29 +60,6 @@ Booking.init(
     status: {
       type: DataTypes.STRING(20),
       defaultValue: 'confirmed',
-    },
-    client_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'client',
-        key: 'id_client',
-      },
-    },
-    service_provider_id: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'service_provider',
-        key: 'id',
-      },
-    },
-    service_id: {
-      type: DataTypes.INTEGER,
-      references: {
-        model: 'service',
-        key: 'id_service',
-      },
     },
   },
   {

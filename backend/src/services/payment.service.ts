@@ -1,147 +1,160 @@
-import { Payment, Booking } from '../models';
+import { query } from '../db';
+import type { Payment } from '../types';
 import { sendPaymentNotification } from './notification.service';
 
-/**
- * Create a new payment record
- */
+// ── Helpers ───────────────────────────────────────────────────
+
+/** Fetch a payment row by id_p, throws if not found */
+const findPaymentById = async (paymentId: number): Promise<Payment> => {
+  const result = await query(
+    'SELECT * FROM payment WHERE id_p = $1',
+    [paymentId]
+  );
+  if (result.rows.length === 0) throw new Error('Payment not found');
+  return result.rows[0];
+};
+
+// ── NOTE on schema ────────────────────────────────────────────
+// payment(id_p, id_s, amount, currency, status, payment_method, created_at)
+// payment links to service (id_s), NOT to booking directly.
+// To notify a client we resolve: payment → service → booking_request → client
+// Status values in DB: 'unpaid' | 'paid'  (no 'pending'/'failed'/'refunded')
+
+const resolveClientForService = async (id_s: number): Promise<number | null> => {
+  const result = await query(
+    `SELECT br.idu_cl
+     FROM booking_request br
+     WHERE br.service_id = $1
+     ORDER BY br.id_r DESC
+     LIMIT 1`,
+    [id_s]
+  );
+  return result.rows[0]?.idu_cl ?? null;
+};
+
+// ── Service functions ─────────────────────────────────────────
+
 export const createPayment = async (data: {
-  booking_id: string;
+  id_s?: number;
   amount: number;
-  payment_method: string;
-  status?: 'pending' | 'paid' | 'failed' | 'refunded';
+  payment_method?: string;
+  status?: string;        // 'unpaid' | 'paid'
 }): Promise<Payment> => {
-  const payment = await Payment.create({
-    ...data,
-    status: data.status || 'pending',
-  });
+  const result = await query(
+    `INSERT INTO payment (id_s, amount, payment_method, status)
+     VALUES ($1, $2, $3, $4)
+     RETURNING *`,
+    [data.id_s ?? null, data.amount, data.payment_method ?? null, data.status ?? 'unpaid']
+  );
 
-  // Get booking to find the client
-  const booking = await Booking.findByPk(data.booking_id);
-  if (booking) {
-    await sendPaymentNotification(booking.client_id, payment.id, 'created');
+  const payment: Payment = result.rows[0];
+
+  if (data.id_s) {
+    const clientId = await resolveClientForService(data.id_s);
+    if (clientId) await sendPaymentNotification(clientId, payment.id_p, 'created');
   }
 
   return payment;
 };
 
-/**
- * Process payment completion
- */
-export const completePayment = async (paymentId: string): Promise<Payment> => {
-  const payment = await Payment.findByPk(paymentId);
+export const completePayment = async (paymentId: number): Promise<Payment> => {
+  const payment = await findPaymentById(paymentId);
 
-  if (!payment) {
-    throw new Error('Payment not found');
+  const result = await query(
+    `UPDATE payment SET status = 'paid' WHERE id_p = $1 RETURNING *`,
+    [paymentId]
+  );
+  const updated: Payment = result.rows[0];
+
+  if (payment.id_s) {
+    const clientId = await resolveClientForService(payment.id_s);
+    if (clientId) await sendPaymentNotification(clientId, paymentId, 'completed');
   }
 
-  await payment.update({ status: 'paid' });
-
-  // Get booking to find the client
-  const booking = await Booking.findByPk(payment.booking_id);
-  if (booking) {
-    await sendPaymentNotification(booking.client_id, paymentId, 'completed');
-  }
-
-  return payment;
+  return updated;
 };
 
-/**
- * Mark payment as failed
- */
-export const failPayment = async (paymentId: string): Promise<Payment> => {
-  const payment = await Payment.findByPk(paymentId);
+export const failPayment = async (paymentId: number): Promise<Payment> => {
+  await findPaymentById(paymentId);   // ensure exists
+  const payment = await findPaymentById(paymentId);
 
-  if (!payment) {
-    throw new Error('Payment not found');
+  const result = await query(
+    // 'unpaid' is the closest DB equivalent to a failed/unprocessed state
+    `UPDATE payment SET status = 'unpaid' WHERE id_p = $1 RETURNING *`,
+    [paymentId]
+  );
+  const updated: Payment = result.rows[0];
+
+  if (payment.id_s) {
+    const clientId = await resolveClientForService(payment.id_s);
+    if (clientId) await sendPaymentNotification(clientId, paymentId, 'failed');
   }
 
-  await payment.update({ status: 'failed' });
-
-  // Get booking to find the client
-  const booking = await Booking.findByPk(payment.booking_id);
-  if (booking) {
-    await sendPaymentNotification(booking.client_id, paymentId, 'failed');
-  }
-
-  return payment;
+  return updated;
 };
 
-/**
- * Process refund
- */
-export const refundPayment = async (paymentId: string): Promise<Payment> => {
-  const payment = await Payment.findByPk(paymentId);
+// ── Summary for a client ──────────────────────────────────────
 
-  if (!payment) {
-    throw new Error('Payment not found');
-  }
-
-  if (payment.status !== 'paid') {
-    throw new Error('Only paid payments can be refunded');
-  }
-
-  await payment.update({ status: 'refunded' });
-
-  return payment;
-};
-
-/**
- * Get payment summary for a user
- */
-export const getPaymentSummary = async (userId: string): Promise<{
+export const getPaymentSummary = async (clientId: number): Promise<{
   total: number;
-  pending: number;
   paid: number;
-  refunded: number;
+  unpaid: number;
   count: number;
+  currency: string;
 }> => {
-  // Get all bookings for this client
-  const clientBookings = await Booking.findAll({
-    where: { client_id: userId },
-    attributes: ['id'],
-  });
+  const result = await query(
+    `SELECT
+       COUNT(*)                                                      AS count,
+       COALESCE(SUM(p.amount), 0)                                   AS total,
+       COALESCE(SUM(CASE WHEN p.status = 'paid'   THEN p.amount ELSE 0 END), 0) AS paid,
+       COALESCE(SUM(CASE WHEN p.status = 'unpaid' THEN p.amount ELSE 0 END), 0) AS unpaid
+     FROM payment p
+     JOIN booking_request br ON br.service_id = p.id_s AND br.idu_cl = $1`,
+    [clientId]
+  );
 
-  const bookingIds = clientBookings.map((b: any) => b.id);
-
-  const payments = await Payment.findAll({
-    where: { booking_id: bookingIds },
-  });
-
-  const total = payments.reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
-  const pending = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
-  const paid = payments.filter(p => p.status === 'paid').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
-  const refunded = payments.filter(p => p.status === 'refunded').reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
-
+  const row = result.rows[0];
   return {
-    total,
-    pending,
-    paid,
-    refunded,
-    count: payments.length,
+    count   : parseInt(row.count, 10),
+    total   : parseFloat(row.total),
+    paid    : parseFloat(row.paid),
+    unpaid  : parseFloat(row.unpaid),
+    currency: 'DZD',
   };
 };
 
-/**
- * Get provider earnings
- */
-export const getProviderEarnings = async (providerId: string): Promise<{
+// ── Earnings for a provider ───────────────────────────────────
+
+export const getProviderEarnings = async (providerId: number): Promise<{
   total: number;
-  pending: number;
-  completed: number;
+  paid: number;
+  unpaid: number;
+  month: number;
+  month_jobs: number;
+  currency: string;
 }> => {
-  // Get all bookings for this provider
-  const providerBookings = await Booking.findAll({
-    where: { service_provider_id: providerId },
-    attributes: ['id', 'status', 'total_price'],
-  });
+  const result = await query(
+    `SELECT
+       COALESCE(SUM(p.amount), 0)                                        AS total,
+       COALESCE(SUM(CASE WHEN p.status = 'paid'   THEN p.amount ELSE 0 END), 0) AS paid,
+       COALESCE(SUM(CASE WHEN p.status = 'unpaid' THEN p.amount ELSE 0 END), 0) AS unpaid,
+       COALESCE(SUM(CASE WHEN DATE_TRUNC('month', p.created_at) = DATE_TRUNC('month', NOW())
+                         THEN p.amount ELSE 0 END), 0)                    AS month,
+       COUNT(CASE WHEN DATE_TRUNC('month', b.date::timestamp) = DATE_TRUNC('month', NOW())
+                  THEN 1 END)                                             AS month_jobs
+     FROM payment p
+     JOIN booking_request br ON br.service_id = p.id_s AND br.idu_sp = $1
+     JOIN booking b          ON b.idu_sp = br.idu_sp AND b.idu_cl = br.idu_cl`,
+    [providerId]
+  );
 
-  const total = providerBookings.reduce((sum, b) => sum + parseFloat(b.total_price?.toString() || '0'), 0);
-  const pending = providerBookings
-    .filter(b => b.status === 'pending' || b.status === 'confirmed')
-    .reduce((sum, b) => sum + parseFloat(b.total_price?.toString() || '0'), 0);
-  const completed = providerBookings
-    .filter(b => b.status === 'completed')
-    .reduce((sum, b) => sum + parseFloat(b.total_price?.toString() || '0'), 0);
-
-  return { total, pending, completed };
+  const row = result.rows[0];
+  return {
+    total      : parseFloat(row.total),
+    paid       : parseFloat(row.paid),
+    unpaid     : parseFloat(row.unpaid),
+    month      : parseFloat(row.month),
+    month_jobs : parseInt(row.month_jobs, 10),
+    currency   : 'DZD',
+  };
 };

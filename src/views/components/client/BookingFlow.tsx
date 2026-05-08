@@ -147,28 +147,28 @@ export default function BookingFlow({
   const handleConfirmBooking = async () => {
     setSubmitting(true);
     try {
-      // Step 6 & 7: Record service request and notify provider
+      // Create booking request (pending state - waiting for provider acceptance)
       const response = await axiosInstance.post('/bookings', {
         service_id: selectedService.id,
-        provider_id: selectedProvider.id,
+        service_provider_id: selectedProvider.id,
         date: formData.date,
         time: formData.time,
         address: formData.address,
-        notes: formData.notes,
-        status: "pending"
+        notes: formData.notes
       });
 
       if (response.data.success) {
-        // Step 8: Display success message
+        // Display pending message - waiting for provider to accept
         setBookingComplete(true);
         setCurrentStep(STEPS.CONFIRMATION);
         if (onComplete) {
-          onComplete(response.data.booking);
+          onComplete(response.data.bookingRequest);
         }
       }
-    } catch (error) {
-      console.error("Failed to create booking:", error);
-      alert("Failed to create booking. Please try again.");
+    } catch (error: any) {
+      console.error("Failed to create booking request:", error);
+      const errorMessage = error.response?.data?.message || "Failed to create booking request. Please try again.";
+      alert(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -200,10 +200,11 @@ export default function BookingFlow({
             margin: "0 auto 24px"
           }}>✓</div>
           <h2 style={{ fontSize: 28, fontWeight: 700, color: p.text, marginBottom: 12 }}>
-            Request Recorded!
+            Request Sent!
           </h2>
           <p style={{ color: p.textMuted, fontSize: 16, marginBottom: 32 }}>
-            Your booking has been sent to <strong style={{ color: p.primary }}>{selectedProvider?.name}</strong>
+            Your booking request has been sent to <strong style={{ color: p.primary }}>{selectedProvider?.name}</strong>.<br/>
+            You'll receive a notification once they accept your request.
           </p>
         </motion.div>
 

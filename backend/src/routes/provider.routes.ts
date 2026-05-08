@@ -17,15 +17,17 @@ const router = Router();
 
 // Public routes
 router.get('/search', asyncHandler(searchProviders));
-router.get('/:id', asyncHandler(getProviderById));
 
 // Protected provider routes
 router.get('/dashboard', authenticate, authorize('provider'), asyncHandler(getProviderDashboard));
 router.get('/my-services', authenticate, authorize('provider'), asyncHandler(getProviderServices));
-router.post('/my-services', authenticate, authorize('provider'), asyncHandler(addProviderService));
-router.delete('/my-services/:id', authenticate, authorize('provider'), asyncHandler(deleteProviderService));
 router.get('/earnings', authenticate, authorize('provider'), asyncHandler(getProviderEarnings));
 router.get('/profile', authenticate, authorize('provider'), asyncHandler(getMyProviderProfile));
+
+router.get('/:id', asyncHandler(getProviderById));
+
+router.post('/my-services', authenticate, authorize('provider'), asyncHandler(addProviderService));
+router.delete('/my-services/:id', authenticate, authorize('provider'), asyncHandler(deleteProviderService));
 router.put('/profile', authenticate, authorize('provider'), asyncHandler(updateProviderProfile));
 
 export default router;

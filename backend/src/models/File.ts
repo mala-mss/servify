@@ -2,24 +2,24 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface FileAttributes {
-  id: number;
+  idF: number;
   url?: string;
   type?: string;
-  task_id: number;
+  idT: number;
 }
 
-interface FileCreationAttributes extends Optional<FileAttributes, 'id' | 'url' | 'type'> {}
+interface FileCreationAttributes extends Optional<FileAttributes, 'idF' | 'url' | 'type'> {}
 
 export class File extends Model<FileAttributes, FileCreationAttributes> implements FileAttributes {
-  public id!: number;
+  public idF!: number;
   public url?: string;
   public type?: string;
-  public task_id!: number;
+  public idT!: number;
 }
 
 File.init(
   {
-    id: {
+    idF: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
@@ -30,13 +30,14 @@ File.init(
     type: {
       type: DataTypes.STRING(50),
     },
-    task_id: {
+    idT: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
         model: 'task',
-        key: 'id',
+        key: 'idT',
       },
+      onDelete: 'CASCADE',
     },
   },
   {

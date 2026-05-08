@@ -31,7 +31,7 @@ export default function BrowseServices() {
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [showNotif, setShowNotif] = useState(false);
   const [services, setServices] = useState([]);
-  const [categories, setCategories] = useState([{ id_category: "all", name: "All Services" }]);
+  const [categories, setCategories] = useState([{ id_c: "all", name: "All Services" }]);
   const [loading, setLoading] = useState(true);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
@@ -49,10 +49,10 @@ export default function BrowseServices() {
         setLoading(true);
         const [servRes, catRes] = await Promise.all([
           axiosInstance.get('/services'),
-          axiosInstance.get('/controllers/services/categories')
+          axiosInstance.get('/services/categories')
         ]);
-        setServices(servRes.data.services);
-        setCategories([{ id_category: "all", name: "All Services" }, ...catRes.data.categories]);
+        if (servRes.data.services) setServices(servRes.data.services);
+        if (catRes.data.categories) setCategories([{ id_c: "all", name: "All Services" }, ...catRes.data.categories]);
       } catch (error) {
         console.error("Failed to fetch services:", error);
       } finally {
@@ -65,7 +65,7 @@ export default function BrowseServices() {
   const filteredServices = services.filter(s => {
     const matchesSearch = s.name.toLowerCase().includes(search.toLowerCase()) || 
                           (s.description && s.description.toLowerCase().includes(search.toLowerCase()));
-    const matchesCat = activeCat === "all" || s.category_id_fk === parseInt(activeCat);
+    const matchesCat = activeCat === "all" || s.id_c === parseInt(activeCat);
     return matchesSearch && matchesCat;
   });
 
@@ -106,12 +106,12 @@ export default function BrowseServices() {
         <div style={styles.categories}>
           {categories.map(cat => (
             <button
-              key={cat.id_category}
-              onClick={() => setActiveCat(cat.id_category.toString())}
+              key={cat.id_c}
+              onClick={() => setActiveCat(cat.id_c.toString())}
               style={{ 
                 ...styles.categoryBtn, 
-                background: activeCat === cat.id_category.toString() ? p.primary : p.cardBg,
-                color: activeCat === cat.id_category.toString() ? '#fff' : p.textMuted,
+                background: activeCat === cat.id_c.toString() ? p.primary : p.cardBg,
+                color: activeCat === cat.id_c.toString() ? '#fff' : p.textMuted,
                 borderColor: p.border
               }}
             >
@@ -126,7 +126,7 @@ export default function BrowseServices() {
           <div style={styles.grid}>
             {filteredServices.map(service => (
               <motion.div 
-                key={service.id_service}
+                key={service.id_s}
                 variants={itemVariants}
                 whileHover={{ y: -5 }}
                 style={{ ...styles.card, background: p.cardBg, borderColor: p.border }}
@@ -135,9 +135,9 @@ export default function BrowseServices() {
                   {service.name.charAt(0)}
                 </div>
                 <h3 style={styles.cardName}>{service.name}</h3>
-                <p style={styles.cardService}>{service.category_name}</p>
+                <p style={styles.cardService}>{service.description}</p>
                 <div style={styles.cardFooter}>
-                  <div style={styles.cardPrice}>Starting from ${service.base_price || '0'}</div>
+                  <div style={styles.cardPrice}>Starting from {service.base_price || '0'} DZD</div>
                   <button
                     onClick={() => { setSelectedService(service); setIsBookingModalOpen(true); }}
                     style={{ ...styles.bookBtn, background: p.primary }}
@@ -158,7 +158,7 @@ export default function BrowseServices() {
         title="Book a Service"
       >
         <BookingFlow
-          initialServiceId={selectedService?.id_service}
+          initialServiceId={selectedService?.id_s}
           initialServiceName={selectedService?.name}
           theme={theme}
           onComplete={(booking) => {
@@ -197,15 +197,3 @@ const styles = {
   cardPrice: { fontSize: 16, fontWeight: 700 },
   bookBtn: { padding: "10px 20px", borderRadius: "12px", border: "none", color: "#fff", cursor: "pointer", fontSize: 14, fontWeight: 600 }
 };
-
-
-
-
-
-
-
-
-
-
-
-

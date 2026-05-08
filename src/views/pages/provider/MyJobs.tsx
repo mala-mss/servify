@@ -57,6 +57,26 @@ export default function MyJobs() {
     }
   };
 
+  const requestFirstHalfPayment = async (id: number) => {
+    try {
+      await axiosInstance.post(`/bookings/${id}/payment/first-half`);
+      alert("First half payment request sent to client");
+    } catch (error: any) {
+      console.error("Failed to request first half payment:", error);
+      alert(error.response?.data?.message || "Failed to send payment request");
+    }
+  };
+
+  const requestSecondHalfPayment = async (id: number) => {
+    try {
+      await axiosInstance.post(`/bookings/${id}/payment/second-half`);
+      alert("Second half payment request sent to client");
+    } catch (error: any) {
+      console.error("Failed to request second half payment:", error);
+      alert(error.response?.data?.message || "Failed to send payment request");
+    }
+  };
+
   const cardStyle: React.CSSProperties = {
     background: p.cardBg,
     border: `1px solid ${p.border}`,
@@ -123,30 +143,44 @@ export default function MyJobs() {
                     <span style={{ fontSize: "11px", color: p.textMuted }}>📍 {job.address}</span>
                   </div>
                   
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    {job.status === 'confirmed' && (
-                        <button 
-                            onClick={() => updateStatus(job.id_booking, 'in_progress')}
-                            style={{ fontSize: "12px", color: "#fff", background: p.primary, border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
-                        >Start Job</button>
-                    )}
-                    {job.status === 'in_progress' && (
-                        <button 
-                            onClick={() => updateStatus(job.id_booking, 'completed')}
-                            style={{ fontSize: "12px", color: "#fff", background: "#4ade80", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
-                        >Mark Completed</button>
-                    )}
-                    <button style={{ 
-                        fontSize: "12px", 
-                        color: p.textMuted, 
-                        background: "transparent", 
-                        border: `1px solid ${p.border}`, 
-                        borderRadius: 6,
-                        padding: "6px 12px",
-                        cursor: "pointer"
-                    }}>
-                        Details
-                    </button>
+                  <div style={{ display: 'flex', gap: 8, flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      {job.status === 'confirmed' && (
+                          <button
+                              onClick={() => updateStatus(job.id_booking, 'in_progress')}
+                              style={{ fontSize: "12px", color: "#fff", background: p.primary, border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
+                          >Start Job</button>
+                      )}
+                      {job.status === 'in_progress' && (
+                          <button
+                              onClick={() => requestFirstHalfPayment(job.id_booking)}
+                              style={{ fontSize: "12px", color: "#fff", background: "#fb923c", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
+                          >Request 1st Payment</button>
+                      )}
+                      {job.status === 'in_progress' && (
+                          <button
+                              onClick={() => updateStatus(job.id_booking, 'completed')}
+                              style={{ fontSize: "12px", color: "#fff", background: "#4ade80", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
+                          >Mark Completed</button>
+                      )}
+                      {job.status === 'completed' && (
+                          <button
+                              onClick={() => requestSecondHalfPayment(job.id_booking)}
+                              style={{ fontSize: "12px", color: "#fff", background: "#fb923c", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
+                          >Request 2nd Payment</button>
+                      )}
+                      <button style={{
+                          fontSize: "12px",
+                          color: p.textMuted,
+                          background: "transparent",
+                          border: `1px solid ${p.border}`,
+                          borderRadius: 6,
+                          padding: "6px 12px",
+                          cursor: "pointer"
+                      }}>
+                          Details
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
