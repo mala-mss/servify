@@ -1,5 +1,6 @@
 // src/pages/provider/IncomingRequests.tsx
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/controllers/context/ThemeContext";
 import axiosInstance from "@/controllers/api/axiosInstance";
 
@@ -20,6 +21,7 @@ interface BookingRequest {
 
 export default function IncomingRequests() {
   const { palette: p } = useTheme();
+  const navigate = useNavigate();
   const [requests, setRequests] = useState<BookingRequest[]>([]);
   const [tab, setTab] = useState<Status>("pending");
   const [loading, setLoading] = useState(true);
@@ -45,8 +47,12 @@ export default function IncomingRequests() {
 
   const acceptRequest = async (id_r: number) => {
     try {
-      await axiosInstance.post(`/bookings/requests/${id_r}/accept`);
-      fetchRequests();
+      const response = await axiosInstance.post(`/bookings/requests/${id_r}/accept`);
+      if (response.data.conversationId) {
+        navigate(`/chat/${response.data.conversationId}`);
+      } else {
+        fetchRequests();
+      }
     } catch (error) {
       console.error("Failed to accept request:", error);
       alert("Failed to accept booking request. Please try again.");

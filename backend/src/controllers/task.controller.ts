@@ -100,7 +100,7 @@ export const deleteTask = async (req: AuthRequest, res: Response): Promise<void>
     throw new AppError('Task not found', 404);
   }
 
-  const isAdmin = req.userRole === 'admin';
+  const isAdmin = req.user?.role === 'admin';
   if (!isAdmin) {
     throw new AppError('Unauthorized', 403);
   }

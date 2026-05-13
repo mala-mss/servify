@@ -6,18 +6,22 @@ interface FeedbackAttributes {
   idU_SP: number;
   overall_rating?: number;
   punctuality?: number;
+  title?: string;
   comment?: string;
+  is_verified_booking?: boolean;
   created_at: Date;
 }
 
-interface FeedbackCreationAttributes extends Optional<FeedbackAttributes, 'overall_rating' | 'punctuality' | 'comment' | 'created_at'> {}
+interface FeedbackCreationAttributes extends Optional<FeedbackAttributes, 'overall_rating' | 'punctuality' | 'title' | 'comment' | 'is_verified_booking' | 'created_at'> {}
 
 export class Feedback extends Model<FeedbackAttributes, FeedbackCreationAttributes> implements FeedbackAttributes {
   public idU_cl!: number;
   public idU_SP!: number;
   public overall_rating?: number;
   public punctuality?: number;
+  public title?: string;
   public comment?: string;
+  public is_verified_booking?: boolean;
   public readonly created_at!: Date;
 }
 
@@ -40,13 +44,20 @@ Feedback.init(
       },
     },
     overall_rating: {
-      type: DataTypes.NUMERIC(3, 2),
+      type: DataTypes.DECIMAL(3, 2),
     },
     punctuality: {
-      type: DataTypes.NUMERIC(3, 2),
+      type: DataTypes.DECIMAL(3, 2),
+    },
+    title: {
+      type: DataTypes.STRING(100),
     },
     comment: {
       type: DataTypes.TEXT,
+    },
+    is_verified_booking: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
     },
     created_at: {
       type: DataTypes.DATE,

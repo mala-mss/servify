@@ -3,6 +3,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import axiosInstance from "@/controllers/api/axiosInstance";
 import { useAuth } from "@/controllers/context/AuthContext";
+import { useNavigate } from "react-router-dom";
+import { startConversation } from "@/controllers/api/chatApi";
+import { MessageSquare } from "lucide-react";
 
 const PALETTES = {
   dark: {
@@ -65,6 +68,7 @@ const QUICK_ACTIONS = [
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ confirmed: 0, pending: 0, completed: 0 });
   const [recentBookings, setRecentBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -93,6 +97,15 @@ export default function Dashboard() {
     window.addEventListener("mousemove", handle, { passive: true });
     return () => window.removeEventListener("mousemove", handle);
   }, []);
+
+  const handleChat = async (idu_sp: number) => {
+    try {
+      const conv = await startConversation(idu_sp);
+      navigate(`/chat/${conv.id}`);
+    } catch (error) {
+      console.error("Failed to start conversation:", error);
+    }
+  };
 
   const STATS = [
     { label: "Upcoming",  value: stats.confirmed,  color: "#6BC8B2" },
@@ -142,8 +155,28 @@ export default function Dashboard() {
                         <div style={styles.bookingName}>{b.service_name}</div>
                         <div style={{ ...styles.bookingDate, color: p.textMuted }}>{new Date(b.date).toLocaleDateString()} at {b.time}</div>
                       </div>
-                      <div style={{ ...styles.statusBadge, ...getStatusStyle(b.status) }}>
-                        {b.status}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <button 
+                          onClick={() => handleChat(b.idu_sp)}
+                          style={{ 
+                            background: 'none', 
+                            border: `1px solid ${p.primary}`, 
+                            color: p.primary, 
+                            borderRadius: '8px', 
+                            padding: '6px 12px', 
+                            fontSize: '12px', 
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                          }}
+                        >
+                          <MessageSquare size={14} />
+                          Chat
+                        </button>
+                        <div style={{ ...styles.statusBadge, ...getStatusStyle(b.status) }}>
+                          {b.status}
+                        </div>
                       </div>
                     </motion.div>
                   ))

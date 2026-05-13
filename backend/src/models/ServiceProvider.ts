@@ -36,6 +36,7 @@ ServiceProvider.init(
     idU_SP: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      field: 'idu_sp',
       references: {
         model: 'user',
         key: 'id',

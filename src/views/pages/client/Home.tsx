@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, Link } from "react-router-dom";
 import { useTheme } from "@/controllers/context/ThemeContext";
 import { BOOKINGS } from "@/controllers/utils/mockData";
 import axiosInstance from "@/controllers/api/axiosInstance";
@@ -346,22 +346,26 @@ export default function Home() {
       >
         <motion.div style={{ ...styles.sectionHeader, borderBottomColor: p.border }} variants={itemVariants}>
           <h2 style={{ ...styles.sectionTitle, color: p.text }}>Browse by category</h2>
-          <a href="/client/browse" style={{ ...styles.sectionLink, color: p.primary }}>View all →</a>
+          <Link to="/client/browse" style={{ ...styles.sectionLink, color: p.primary }}>View all →</Link>
         </motion.div>
         <div style={styles.categoryGrid}>
           {CATEGORIES.map((cat) => (
-            <motion.a
-              href={`/client/browse?category=${cat.id}`}
+            <Link
+              to={`/client/browse?category=${cat.id}`}
               key={cat.id}
-              variants={itemVariants}
-              style={{ ...styles.categoryCard, background: p.cardBg, borderColor: p.border }}
-              whileHover={{ y: -8, borderColor: p.primary, background: theme === "dark" ? "rgba(47,176,188,0.05)" : "rgba(47,176,188,0.03)" }}
+              style={{ ...styles.categoryCard, background: p.cardBg, borderColor: p.border, textDecoration: 'none' }}
             >
-              <div style={{ ...styles.catIcon, color: p.primary }}>{cat.icon}</div>
-              <div style={{ ...styles.catName, color: p.text }}>{cat.name}</div>
-              <div style={{ ...styles.catDesc, color: p.textMuted }}>{cat.desc}</div>
-              <div style={{ ...styles.catCount, color: p.secondary }}>{cat.count} providers</div>
-            </motion.a>
+              <motion.div
+                variants={itemVariants}
+                whileHover={{ y: -8, borderColor: p.primary, background: theme === "dark" ? "rgba(47,176,188,0.05)" : "rgba(47,176,188,0.03)" }}
+                style={{ height: '100%', width: '100%' }}
+              >
+                <div style={{ ...styles.catIcon, color: p.primary }}>{cat.icon}</div>
+                <div style={{ ...styles.catName, color: p.text }}>{cat.name}</div>
+                <div style={{ ...styles.catDesc, color: p.textMuted }}>{cat.desc}</div>
+                <div style={{ ...styles.catCount, color: p.secondary }}>{cat.count} providers</div>
+              </motion.div>
+            </Link>
           ))}
         </div>
       </motion.section>
@@ -541,16 +545,18 @@ export default function Home() {
           {bookings.map((b) => {
             const s = getStatusStyle(b.status, theme);
             return (
-              <motion.a key={b.id} href="/client/my-bookings" style={{ ...styles.bookingRow, background: p.cardBg, borderColor: p.border }} variants={itemVariants} whileHover={{ background: theme === "dark" ? "rgba(47,176,188,0.05)" : "rgba(47,176,188,0.03)" }}>
-                <div style={styles.bookingLeft}>
-                  <span style={{ ...styles.bookingRef, color: p.textMuted }}>{b.id}</span>
-                  <span style={{ color: p.text }}>{b.service}</span>
-                </div>
-                <div style={styles.bookingRight}>
-                  <span style={{ ...styles.bookingDate, color: p.textMuted }}>{b.date}</span>
-                  <span style={{ ...styles.statusBadge, color: s.color, background: s.bg }}>{b.status}</span>
-                </div>
-              </motion.a>
+              <Link key={b.id} to="/client/my-bookings" style={{ ...styles.bookingRow, background: p.cardBg, borderColor: p.border, textDecoration: 'none' }}>
+                <motion.div variants={itemVariants} whileHover={{ background: theme === "dark" ? "rgba(47,176,188,0.05)" : "rgba(47,176,188,0.03)" }} style={{ display: 'flex', width: '100%', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={styles.bookingLeft}>
+                    <span style={{ ...styles.bookingRef, color: p.textMuted }}>{b.id}</span>
+                    <span style={{ color: p.text }}>{b.service}</span>
+                  </div>
+                  <div style={styles.bookingRight}>
+                    <span style={{ ...styles.bookingDate, color: p.textMuted }}>{b.date}</span>
+                    <span style={{ ...styles.statusBadge, color: s.color, background: s.bg }}>{b.status}</span>
+                  </div>
+                </motion.div>
+              </Link>
             );
           })}
         </div>
@@ -605,7 +611,7 @@ export default function Home() {
         }} variants={itemVariants}>
           <h2 style={{ ...styles.ctaTitle, color: p.text }}>Ready to get started?</h2>
           <p style={{ ...styles.ctaSub, color: p.textMuted }}>Join thousands of homeowners who trust Servify for their daily needs.</p>
-          <a href="/client/browse" style={{ ...styles.ctaBtn, background: p.primary, color: "#fff" }}>Explore Services</a>
+          <Link to="/client/browse" style={{ ...styles.ctaBtn, background: p.primary, color: "#fff", textDecoration: 'none' }}>Explore Services</Link>
         </motion.div>
       </motion.section>
 

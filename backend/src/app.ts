@@ -12,7 +12,9 @@ import {
   taskRoutes,
   feedbackRoutes,
   paymentRoutes,
-  availabilityRoutes
+  availabilityRoutes,
+  chatRoutes,
+  userPublicKeyRoutes
 } from './routes';
 
 
@@ -22,7 +24,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -43,6 +49,8 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/availability', availabilityRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/user-public-key', userPublicKeyRoutes);
 
 // Health check
 app.get('/api/health', async (_req, res) => {
@@ -55,7 +63,7 @@ app.get('/api/health', async (_req, res) => {
 });
 
 // Error handling
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err.stack);
   res.status(err.status || 500).json({
     message: err.message || 'Internal Server Error',

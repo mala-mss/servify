@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { User } from '../models';
 import { authenticate, authorize } from '../middleware/auth';
@@ -29,7 +29,7 @@ router.post('/authorized-people', authenticate, authorize('client'), asyncHandle
 router.put('/authorized-people/:id', authenticate, authorize('client'), asyncHandler(updateAuthorizedPerson));
 router.delete('/authorized-people/:id', authenticate, authorize('client'), asyncHandler(removeAuthorizedPerson));
 
-router.get('/', authenticate, authorize('admin'), asyncHandler(async (req, res) => {
+router.get('/', authenticate, authorize('admin'), asyncHandler(async (req: Request, res: Response) => {
   const { role, isActive } = req.query;
 
   const where: any = {};
@@ -45,7 +45,7 @@ router.get('/', authenticate, authorize('admin'), asyncHandler(async (req, res) 
   res.json({ users });
 }));
 
-router.get('/me', authenticate, asyncHandler(async (req: AuthRequest, res) => {
+router.get('/me', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
   const user = await User.findByPk(req.user!.id, {
     attributes: { exclude: ['password'] },
   });
@@ -53,7 +53,7 @@ router.get('/me', authenticate, asyncHandler(async (req: AuthRequest, res) => {
   res.json({ user });
 }));
 
-router.get('/:id', authenticate, asyncHandler(async (req, res) => {
+router.get('/:id', authenticate, asyncHandler(async (req: Request, res: Response) => {
   const user = await User.findByPk(req.params.id, {
     attributes: { exclude: ['password'] },
   });

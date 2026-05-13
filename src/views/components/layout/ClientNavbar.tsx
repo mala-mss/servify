@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, type CSSProperties } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "@/controllers/context/AuthContext";
 import DiscordSearch from "../common/DiscordSearch";
 import axiosInstance from "@/controllers/api/axiosInstance";
+import ChatInboxDropdown from "../chat/ChatInboxDropdown";
 
 const PALETTES = {
   dark: {
@@ -73,10 +74,10 @@ export default function ClientNavbar({ theme = "dark", onThemeToggle, onSearch }
     <nav style={{ ...styles.nav, background: p.navBg, borderBottomColor: p.border }}>
       <div style={styles.navContainer}>
         {/* Logo */}
-        <a href="/client/home" style={{ ...styles.navLogo, textDecoration: 'none' }}>
+        <Link to="/client/home" style={{ ...styles.navLogo, textDecoration: 'none' }}>
           <span style={{ ...styles.logoMark, color: p.primary }}>◈</span>
           <span style={{ ...styles.logoText, color: p.text }}>Servify</span>
-        </a>
+        </Link>
 
         {/* Search Bar */}
         <div style={styles.searchContainer}>
@@ -97,8 +98,10 @@ export default function ClientNavbar({ theme = "dark", onThemeToggle, onSearch }
             >
               Explore
             </button>
-            <a href="/client/my-bookings" style={{ ...styles.navLink, color: p.textMuted }}>My Bookings</a>
+            <Link to="/client/my-bookings" style={{ ...styles.navLink, color: p.textMuted }}>My Bookings</Link>
             
+            <ChatInboxDropdown theme={theme} />
+
             <div style={{ position: "relative" }} ref={notifRef}>
               <button 
                 onClick={() => setShowNotif(!showNotif)} 
@@ -118,7 +121,7 @@ export default function ClientNavbar({ theme = "dark", onThemeToggle, onSearch }
                   >
                     <div style={styles.notifDropHeader}>
                       <span style={{ fontSize: 13, fontWeight: 700, color: p.text }}>Notifications</span>
-                      <a href="/client/notifications" style={{ fontSize: 11, color: p.primary, textDecoration: 'none' }}>View all</a>
+                      <Link to="/client/notifications" style={{ fontSize: 11, color: p.primary, textDecoration: 'none' }}>View all</Link>
                     </div>
                     <div style={styles.notifDropList}>
                       {notifications.length === 0 ? (
@@ -144,13 +147,13 @@ export default function ClientNavbar({ theme = "dark", onThemeToggle, onSearch }
             <button onClick={onThemeToggle} style={{ ...styles.themeBtn, color: p.text, background: p.cardBg, borderColor: p.border }}>
               {theme === "dark" ? "☼" : "☾"}
             </button>
-            <a href="/client/profile" style={{ ...styles.avatarBtn, background: theme === 'dark' ? "rgba(47,176,188,0.15)" : "#D6FFF9", color: p.primary, textDecoration: 'none', overflow: 'hidden' }}>
+            <Link to="/client/profile" style={{ ...styles.avatarBtn, background: theme === 'dark' ? "rgba(47,176,188,0.15)" : "#D6FFF9", color: p.primary, textDecoration: 'none', overflow: 'hidden' }}>
               {user?.profile_picture ? (
                 <img src={user.profile_picture} alt={user?.fname || user?.name || "User"} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
                 user?.fname?.[0]?.toUpperCase() ?? "U"
               )}
-            </a>
+            </Link>
           </div>
         </div>
       </div>

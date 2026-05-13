@@ -25,6 +25,7 @@ ServiceCategory.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+      field: 'id_c',
     },
     name: {
       type: DataTypes.STRING(100),

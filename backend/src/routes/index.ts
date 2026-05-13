@@ -8,3 +8,5 @@ export { default as paymentRoutes } from './payment.routes';
 export { default as availabilityRoutes } from './availability.routes';
 export { default as notificationRoutes } from './notification.routes';
 export { default as providerRoutes } from './provider.routes';
+export { default as chatRoutes } from './chat.routes';
+export { default as userPublicKeyRoutes } from './userPublicKey.routes';

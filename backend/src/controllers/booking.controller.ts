@@ -2,53 +2,59 @@ import { Response } from 'express';
 import { query } from '../db';
 import { AuthRequest } from '../middleware/auth';
 import { createNotificationInternal } from './notification.controller';
+import { Conversation } from '../models';
 
+// ── GET /bookings/stats ───────────────────────────────────────
 export const getBookingStats = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.userId;
 
   try {
     const stats = await query(
       `SELECT
-        COUNT(*) FILTER (WHERE status = 'confirmed') as confirmed,
-        COUNT(*) FILTER (WHERE status = 'pending') as pending,
-        COUNT(*) FILTER (WHERE status = 'completed') as completed,
-        COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled
+         COUNT(*) FILTER (WHERE status = 'confirmed') AS confirmed,
+         COUNT(*) FILTER (WHERE status = 'pending')   AS pending,
+         COUNT(*) FILTER (WHERE status = 'completed') AS completed,
+         COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
+         COUNT(*)                                     AS total
        FROM booking
-       WHERE idU_cl = $1
-       OR idU_SP = $1`,
+       WHERE idu_cl = $1 OR idu_sp = $1`,
       [userId]
     );
 
-    res.json({ stats: stats.rows[0] });
+    res.json({ success: true, stats: stats.rows[0] });
   } catch (error: any) {
+    console.error('Get booking stats error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
+// ── GET /bookings ─────────────────────────────────────────────
 export const getBookings = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.userId;
   const { status } = req.query;
 
   try {
     let sql = `
-      SELECT b.*, (u.fname || ' ' || u.lname) as other_party_name
+      SELECT
+        b.*,
+        (cl.fname || ' ' || cl.lname) AS client_name,
+        (sp.fname || ' ' || sp.lname) AS provider_name
       FROM booking b
-      LEFT JOIN client c ON b.idU_cl = c.idU_cl   
-      LEFT JOIN service_provider sp ON b.idU_SP = sp.idU_SP
-      LEFT JOIN "user" u ON (u.id = sp.idU_SP OR u.id = c.idU_cl) AND u.id != $1
-      WHERE c.idU_cl = $1 OR sp.idU_SP = $1
+      JOIN "user" cl ON cl.id = b.idu_cl
+      JOIN "user" sp ON sp.id = b.idu_sp
+      WHERE b.idu_cl = $1 OR b.idu_sp = $1
     `;
     const params: any[] = [userId];
 
     if (status) {
-      sql += ' AND b.status = $2';
       params.push(status);
+      sql += ` AND b.status = $${params.length}`;
     }
 
-    sql += ' ORDER BY b.date DESC, b.time DESC';        
+    sql += ' ORDER BY b.date DESC, b.time DESC';
 
     const result = await query(sql, params);
-    res.json({ bookings: result.rows });
+    res.json({ success: true, bookings: result.rows });
   } catch (error: any) {
     console.error('Get bookings error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -56,27 +62,38 @@ export const getBookings = async (req: AuthRequest, res: Response): Promise<void
 };
 
 export const createBookingRequest = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { service_id, service_provider_id, date, time } = req.body;
+  const { service_id, service_provider_id, date, time, duration } = req.body;
   const userId = req.userId;
 
   try {
-    // Check if user is client
-    const clientResult = await query('SELECT idU_cl FROM client WHERE idU_cl = $1', [userId]);
+    const clientResult = await query('SELECT idu_cl FROM client WHERE idu_cl = $1', [userId]);
     if (clientResult.rows.length === 0) {
       res.status(403).json({ message: 'Only clients can create booking requests' });
       return;
     }
 
-    // Create booking request (pending state)
+    const providerResult = await query('SELECT idu_sp FROM service_provider WHERE idu_sp = $1', [service_provider_id]);
+    if (providerResult.rows.length === 0) {
+      res.status(400).json({ message: 'Invalid service provider ID' });
+      return;
+    }
+
+    const serviceResult = await query('SELECT id_s FROM service WHERE id_s = $1', [service_id]);
+    if (serviceResult.rows.length === 0) {
+      res.status(400).json({ message: 'Invalid service ID' });
+      return;
+    }
+
     const bookingRequest = await query(
-      `INSERT INTO booking_request (idU_cl, idU_SP, service_id, date, time, status)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [userId, service_provider_id, service_id, date, time, 'pending']
+      `INSERT INTO booking_request (idu_cl, idu_sp, service_id, date, time, duration, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       RETURNING *`,
+      [userId, service_provider_id, service_id, date, time, duration ?? null, 'pending']
     );
 
-    // Get service name
-    const serviceResult = await query('SELECT name FROM service WHERE id_S = $1', [service_id]);
-    const serviceName = serviceResult.rows[0].name;
+    // Get service name for notification
+    const serviceNameResult = await query('SELECT name FROM service WHERE id_s = $1', [service_id]);
+    const serviceName = serviceNameResult.rows[0]?.name ?? 'the requested service';
 
     // Notify provider about new booking request
     await createNotificationInternal(
@@ -97,6 +114,7 @@ export const createBookingRequest = async (req: AuthRequest, res: Response): Pro
   }
 };
 
+// ── POST /bookings/requests/:id_R/accept ────────────────────
 export const acceptBookingRequest = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id_R } = req.params;
   const { address } = req.body;
@@ -105,7 +123,7 @@ export const acceptBookingRequest = async (req: AuthRequest, res: Response): Pro
   try {
     // Get booking request details
     const requestResult = await query(
-      'SELECT * FROM booking_request WHERE id_R = $1 AND status = $2',
+      'SELECT * FROM booking_request WHERE id_r = $1 AND status = $2',
       [id_R, 'pending']
     );
 
@@ -114,50 +132,60 @@ export const acceptBookingRequest = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
-    const bookingRequest = requestResult.rows[0];
+    const br = requestResult.rows[0];
 
     // Verify this provider is the one being requested
-    if (userId !== bookingRequest.idU_SP) {
+    if (userId !== br.idu_sp) {
       res.status(403).json({ message: 'Unauthorized to accept this booking request' });
       return;
     }
 
     // Create confirmed booking
     const booking = await query(
-      `INSERT INTO booking (idU_cl, idU_SP, date, time, address, status)
-       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-      [
-        bookingRequest.idU_cl,
-        bookingRequest.idU_SP,
-        bookingRequest.date,
-        bookingRequest.time,
-        address || null,
-        'confirmed'
-      ]
+      `INSERT INTO booking (idu_cl, idu_sp, date, time, address, status, service_id)
+       VALUES ($1, $2, $3, $4, $5, 'confirmed', $6)
+       RETURNING *`,
+      [br.idu_cl, br.idu_sp, br.date, br.time, address ?? null, br.service_id]
     );
 
     // Update booking request status
     await query(
-      'UPDATE booking_request SET status = $1 WHERE id_R = $2 AND idU_cl = $3 AND idU_SP = $4',
-      ['accepted', id_R, bookingRequest.idU_cl, bookingRequest.idU_SP]
+      'UPDATE booking_request SET status = $1 WHERE id_r = $2',
+      ['accepted', id_R]
     );
 
+    // Find or create conversation
+    let [conversation] = await Conversation.findOrCreate({
+      where: { idu_cl: br.idu_cl, idu_sp: br.idu_sp }
+    });
+
     // Get service name
-    const serviceResult = await query('SELECT name FROM service WHERE id_S = $1', [bookingRequest.service_id]);
-    const serviceName = serviceResult.rows[0].name;
+    const serviceResult = await query('SELECT name FROM service WHERE id_s = $1', [br.service_id]);
+    const serviceName = serviceResult.rows[0]?.name ?? 'the requested service';
 
     // Notify client that booking was accepted
     await createNotificationInternal(
-      bookingRequest.idU_cl,
+      br.idu_cl,
       'Booking Request Accepted',
       `Your booking request for ${serviceName} has been accepted. Your booking is now confirmed.`,
-      'booking'
+      'booking',
+      `/chat/${conversation.id}`
+    );
+
+    // Notify client to proceed with payment
+    await createNotificationInternal(
+      br.idu_cl,
+      'Payment Required',
+      `Your booking for ${serviceName} is confirmed. Please proceed to payment to finalize the arrangement.`,
+      'payment',
+      `/client/payment/${booking.rows[0].id_b}`
     );
 
     res.status(200).json({
       success: true,
       message: 'Booking request accepted and booking confirmed',
-      booking: booking.rows[0]
+      booking: booking.rows[0],
+      conversationId: conversation.id
     });
   } catch (error: any) {
     console.error('Accept booking request error:', error);
@@ -165,6 +193,7 @@ export const acceptBookingRequest = async (req: AuthRequest, res: Response): Pro
   }
 };
 
+// ── POST /bookings/requests/:id_R/reject ────────────────────
 export const rejectBookingRequest = async (req: AuthRequest, res: Response): Promise<void> => {
   const { id_R } = req.params;
   const userId = req.userId;
@@ -172,7 +201,7 @@ export const rejectBookingRequest = async (req: AuthRequest, res: Response): Pro
   try {
     // Get booking request details
     const requestResult = await query(
-      'SELECT * FROM booking_request WHERE id_R = $1 AND status = $2',
+      'SELECT * FROM booking_request WHERE id_r = $1 AND status = $2',
       [id_R, 'pending']
     );
 
@@ -181,23 +210,23 @@ export const rejectBookingRequest = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
-    const bookingRequest = requestResult.rows[0];
+    const br = requestResult.rows[0];
 
     // Verify this provider is the one being requested
-    if (userId !== bookingRequest.idU_SP) {
+    if (userId !== br.idu_sp) {
       res.status(403).json({ message: 'Unauthorized to reject this booking request' });
       return;
     }
 
     // Update booking request status
     await query(
-      'UPDATE booking_request SET status = $1 WHERE id_R = $2 AND idU_cl = $3 AND idU_SP = $4',
-      ['rejected', id_R, bookingRequest.idU_cl, bookingRequest.idU_SP]
+      'UPDATE booking_request SET status = $1 WHERE id_r = $2',
+      ['rejected', id_R]
     );
 
     // Notify client that booking was rejected
     await createNotificationInternal(
-      bookingRequest.idU_cl,
+      br.idu_cl,
       'Booking Request Declined',
       `Your booking request has been declined by the provider.`,
       'booking'
@@ -213,56 +242,73 @@ export const rejectBookingRequest = async (req: AuthRequest, res: Response): Pro
   }
 };
 
+// ── GET /bookings/requests ────────────────────────────────────
 export const getBookingRequests = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.userId;
+  const { role } = req.query; // 'provider' or 'client'
 
   try {
-    // Get all booking requests for this provider
+    // Support both client and provider views
+    const whereClause = role === 'client'
+      ? 'br.idu_cl = $1'
+      : 'br.idu_sp = $1';
+
     const result = await query(
-      `SELECT br.*, (u.fname || ' ' || u.lname) as client_name, s.name as service_name
+      `SELECT
+         br.*,
+         (cl.fname || ' ' || cl.lname) AS client_name,
+         (sp.fname || ' ' || sp.lname) AS provider_name,
+         s.name                         AS service_name
        FROM booking_request br
-       JOIN client c ON br.idU_cl = c.idU_cl
-       JOIN "user" u ON c.idU_cl = u.id
-       JOIN service s ON br.service_id = s.id_S
-       WHERE br.idU_SP = $1
+       JOIN "user" cl ON cl.id = br.idu_cl
+       JOIN "user" sp ON sp.id = br.idu_sp
+       LEFT JOIN service s ON s.id_s = br.service_id
+       WHERE ${whereClause}
        ORDER BY br.date DESC, br.time DESC`,
       [userId]
     );
 
-    res.json({ bookingRequests: result.rows });
+    res.json({ success: true, bookingRequests: result.rows });
   } catch (error: any) {
     console.error('Get booking requests error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };
 
+// ── PATCH /bookings/:id_B/status ─────────────────────────────
 export const updateBookingStatus = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id_B, idU_cl, idU_SP } = req.params;
+  const { id_B } = req.params;
   const { status } = req.body;
+  const userId = req.userId;
 
   try {
     const result = await query(
-      'UPDATE booking SET status = $1 WHERE id_B = $2 AND idU_cl = $3 AND idU_SP = $4 RETURNING *',
-      [status, id_B, idU_cl, idU_SP]
+      `UPDATE booking SET status = $1
+       WHERE id_b = $2 AND (idu_cl = $3 OR idu_sp = $3)
+       RETURNING *`,
+      [status, id_B, userId]
     );
 
     if (result.rows.length === 0) {
-      res.status(404).json({ message: 'Booking not found' });
+      res.status(404).json({ message: 'Booking not found or unauthorized' });
       return;
     }
 
     const booking = result.rows[0];
 
-    // Notify based on status change
     if (status === 'completed') {
-      await createNotificationInternal(booking.idU_cl, 'Service Completed', 'Your service has been marked as completed. Please leave a review!', 'booking');
-      await createNotificationInternal(booking.idU_SP, 'Job Finished', 'You have successfully completed the job.', 'booking');
+      await Promise.all([
+        createNotificationInternal(booking.idu_cl, 'Service Completed', 'Your service has been completed. Please leave a review!', 'booking'),
+        createNotificationInternal(booking.idu_sp, 'Job Finished', 'You have successfully completed the job.', 'booking'),
+      ]);
     } else if (status === 'cancelled') {
-      await createNotificationInternal(booking.idU_cl, 'Booking Cancelled', 'The booking has been cancelled.', 'booking');
-      await createNotificationInternal(booking.idU_SP, 'Job Cancelled', 'The job has been cancelled.', 'booking');
+      await Promise.all([
+        createNotificationInternal(booking.idu_cl, 'Booking Cancelled', 'Your booking has been cancelled.', 'booking'),
+        createNotificationInternal(booking.idu_sp, 'Job Cancelled', 'The job has been cancelled.', 'booking'),
+      ]);
     }
 
-    res.json({ message: 'Booking updated successfully', booking: result.rows[0] });
+    res.json({ success: true, message: 'Booking updated successfully', booking });
   } catch (error: any) {
     console.error('Update booking status error:', error);
     res.status(500).json({ message: 'Internal server error' });

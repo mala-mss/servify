@@ -1,7 +1,7 @@
 // src/pages/client/BrowseServices.jsx
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useOutletContext } from "react-router-dom";
+import { useOutletContext, Link } from "react-router-dom";
 import { useTheme } from "@/controllers/context/ThemeContext";
 import axiosInstance from "@/controllers/api/axiosInstance";
 import { useAuth } from "@/controllers/context/AuthContext";
@@ -75,13 +75,13 @@ export default function BrowseServices() {
       <div style={{ ...styles.glow, left: mousePos.x - 300, top: mousePos.y - 300, background: `radial-gradient(circle, ${p.glow} 0%, transparent 70%)` }} />
 
       <nav style={{ ...styles.nav, background: p.navBg, borderBottomColor: p.border }}>
-        <a href="/client/home" style={{ ...styles.navLogo, textDecoration: 'none' }}>
+        <Link to="/client/home" style={{ ...styles.navLogo, textDecoration: 'none' }}>
           <span style={{ ...styles.logoMark, color: p.primary }}>◈</span>
           <span style={{ ...styles.logoText, color: p.text }}>Servify</span>
-        </a>
+        </Link>
         <div style={styles.navLinks}>
-          <a href="/client/browse" style={{ ...styles.navLink, color: p.primary }}>Browse</a>
-          <a href="/client/my-bookings" style={{ ...styles.navLink, color: p.textMuted }}>My bookings</a>
+          <Link to="/client/browse" style={{ ...styles.navLink, color: p.primary }}>Browse</Link>
+          <Link to="/client/my-bookings" style={{ ...styles.navLink, color: p.textMuted }}>My bookings</Link>
           <button onClick={toggle} style={{ background: 'none', border: 'none', color: p.text, cursor: 'pointer' }}>
             {theme === 'dark' ? '☀️' : '🌙'}
           </button>

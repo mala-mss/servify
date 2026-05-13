@@ -4,6 +4,8 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import axiosInstance from "@/controllers/api/axiosInstance";
 import { useTheme } from "@/controllers/context/ThemeContext";
+import { useAuth } from "@/controllers/context/AuthContext";
+import { startConversation } from "@/controllers/api/chatApi";
 
 export default function ProviderDetail() {
   const { id } = useParams();
@@ -12,6 +14,17 @@ export default function ProviderDetail() {
   const [provider, setProvider] = useState(null);
   const [loading, setLoading] = useState(true);
   const { mode: theme, palette: p } = useTheme();
+  const { user } = useAuth();
+  const [sortBy, setSortBy] = useState('recent');
+
+  const handleSendMessage = async () => {
+    try {
+      const conversation = await startConversation(Number(id));
+      navigate(`/chat/${conversation.id}`);
+    } catch (error) {
+      console.error("Failed to start conversation:", error);
+    }
+  };
 
   useEffect(() => {
     const fetchProvider = async () => {
@@ -29,6 +42,13 @@ export default function ProviderDetail() {
     };
     fetchProvider();
   }, [id]);
+
+  const sortedReviews = provider?.reviews ? [...provider.reviews].sort((a, b) => {
+    if (sortBy === 'recent') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    if (sortBy === 'high') return b.overall_rating - a.overall_rating;
+    if (sortBy === 'low') return a.overall_rating - b.overall_rating;
+    return 0;
+  }) : [];
 
   const handleBookNow = () => {
     if (location.state && location.state.serviceName) {
@@ -99,25 +119,65 @@ export default function ProviderDetail() {
               </section>
 
               <section style={styles.section}>
+                <h2 style={{ ...styles.sectionTitle, color: p.text }}>Certifications & Documents</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  {provider.documents?.filter(doc => !doc.idU_CL).map((doc, idx) => (
+                    <a 
+                      key={idx} 
+                      href={doc.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      style={{ padding: '12px 16px', borderRadius: '12px', background: p.cardBg, border: `1px solid ${p.border}`, display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none', color: p.text }}
+                    >
+                      <span style={{ fontSize: '20px' }}>📄</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{doc.name}</div>
+                        <div style={{ fontSize: '11px', color: p.textMuted }}>{doc.type?.toUpperCase()}</div>
+                      </div>
+                    </a>
+                  ))}
+                  {(!provider.documents || provider.documents.filter(doc => !doc.idU_CL).length === 0) && (
+                    <p style={{ color: p.textMuted, fontSize: '14px' }}>No public documents available.</p>
+                  )}
+                </div>
+              </section>
+
+              <section style={styles.section}>
                 <div style={styles.reviewHeader}>
                   <h2 style={{ ...styles.sectionTitle, color: p.text }}>Client Reviews</h2>
-                  <div style={styles.ratingBadge}>
-                    <span style={{ color: "#FFD700" }}>★</span> {provider.rating}
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <select 
+                      value={sortBy} 
+                      onChange={(e) => setSortBy(e.target.value)}
+                      style={{ background: p.cardBg, color: p.text, border: `1px solid ${p.border}`, borderRadius: '8px', padding: '4px 8px', fontSize: '12px', cursor: 'pointer' }}
+                    >
+                      <option value="recent">Most Recent</option>
+                      <option value="high">Highest Rated</option>
+                      <option value="low">Lowest Rated</option>
+                    </select>
+                    <div style={styles.ratingBadge}>
+                      <span style={{ color: "#FFD700" }}>★</span> {provider.rating}
+                    </div>
                   </div>
                 </div>
                 
                 <div style={styles.reviewsList}>
-                  {(provider.reviews && provider.reviews.length > 0) ? (
-                    provider.reviews.map((rev, idx) => (
+                  {sortedReviews.length > 0 ? (
+                    sortedReviews.map((rev, idx) => (
                       <div key={idx} style={{ ...styles.reviewCard, background: p.cardBg, borderColor: p.border }}>
                         <div style={styles.reviewUser}>
                           <div style={{ ...styles.avatarSmall, background: theme === 'dark' ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", color: p.text }}>{rev.user_name?.[0] || "C"}</div>
                           <div>
                             <div style={{ fontWeight: 700, fontSize: 14, color: p.text }}>{rev.user_name || "Anonymous Client"}</div>
                             <div style={{ fontSize: 12, color: p.textMuted }}>{new Date(rev.created_at).toLocaleDateString()}</div>
+                            {rev.is_verified_booking && (
+                              <div style={{ fontSize: '10px', color: '#10B981', fontWeight: 800, background: '#10B98115', padding: '2px 6px', borderRadius: '4px', marginTop: '4px', width: 'fit-content' }}>
+                                ✓ Verified Booking
+                              </div>
+                            )}
                           </div>
                           <div style={{ marginLeft: "auto", color: "#FFD700" }}>
-                            {"★".repeat(rev.rating)}{"☆".repeat(5 - rev.rating)}
+                            {"★".repeat(Math.round(rev.overall_rating || rev.rating))}{"☆".repeat(5 - Math.round(rev.overall_rating || rev.rating))}
                           </div>
                         </div>
                         <p style={{ ...styles.reviewText, color: p.text }}>{rev.comment}</p>
@@ -147,6 +207,13 @@ export default function ProviderDetail() {
 
                 <button onClick={handleBookNow} style={{ ...styles.bookBtn, background: p.primary, color: "#fff" }}>
                   Book a Service
+                </button>
+
+                <button 
+                  onClick={handleSendMessage} 
+                  style={{ ...styles.bookBtn, background: 'transparent', color: p.primary, border: `2px solid ${p.primary}`, marginTop: -10 }}
+                >
+                  Send Message
                 </button>
                 
                 <p style={{ ...styles.guarantee, color: p.textMuted }}>

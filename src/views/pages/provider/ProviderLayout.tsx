@@ -7,6 +7,7 @@ import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "@/controllers/context/ThemeContext";
 import { useAuth } from "@/controllers/context/AuthContext";
 import axiosInstance from "@/controllers/api/axiosInstance";
+import ChatInboxDropdown from "@/views/components/chat/ChatInboxDropdown";
 
 const NAV = [
   {
@@ -16,6 +17,7 @@ const NAV = [
       { to: "/provider/incoming-requests",  icon: "◎", label: "Incoming Requests", badge: 3 },
       { to: "/provider/my-jobs",            icon: "◆", label: "My Jobs"            },
       { to: "/provider/schedule",           icon: "▦", label: "Schedule"           },
+      { to: "/chat/inbox",                  icon: "✉", label: "Messages"           },
     ],
   },
   {
@@ -147,7 +149,9 @@ export default function ProviderLayout() {
             {pageTitle}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={() => navigate("/provider/notifications")} style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${p.border}`, background: p.cardBg, cursor: "pointer", fontSize: 14, color: p.textMuted, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
+            <ChatInboxDropdown theme={mode} />
+            <button onClick={() => navigate("/provider/notifications")}
+ style={{ width: 34, height: 34, borderRadius: 8, border: `1px solid ${p.border}`, background: p.cardBg, cursor: "pointer", fontSize: 14, color: p.textMuted, display: "flex", alignItems: "center", justifyContent: "center", position: "relative" }}>
               ◌
               {hasUnread && <span style={{ position: "absolute", top: 6, right: 6, width: 6, height: 6, borderRadius: "50%", background: p.primary, border: `1.5px solid ${p.bg}` }} />}
             </button>

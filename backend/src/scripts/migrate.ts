@@ -1,4 +1,5 @@
 import { connectDB, syncDB } from '../config';
+import '../models'; // Import models to register them
 
 const runMigrations = async () => {
   try {

@@ -25,12 +25,14 @@ Service.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+      field: 'id_s',
     },
     id_C: {
       type: DataTypes.INTEGER,
+      field: 'id_c',
       references: {
         model: 'service_category',
-        key: 'id_C',
+        key: 'id_c',
       },
     },
     name: {
@@ -41,7 +43,7 @@ Service.init(
       type: DataTypes.TEXT,
     },
     base_price: {
-      type: DataTypes.NUMERIC(10, 2),
+      type: DataTypes.DECIMAL(10, 2),
     },
   },
   {

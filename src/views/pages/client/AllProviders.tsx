@@ -7,6 +7,7 @@ import { useAuth } from "@/controllers/context/AuthContext";
 import { useTheme } from "@/controllers/context/ThemeContext";
 import BookingModal from "@/views/components/common/BookingModal";
 import BookingFlow from "@/views/components/client/BookingFlow";
+import { startConversation } from "@/controllers/api/chatApi";
 
 interface Category {
   id_category: string;
@@ -114,6 +115,15 @@ export default function AllProviders() {
 
   const handleViewProfile = (providerId: string) => {
     navigate("/client/provider/" + providerId);
+  };
+
+  const handleSendMessage = async (providerId: string) => {
+    try {
+      const conversation = await startConversation(Number(providerId));
+      navigate(`/chat/${conversation.id}`);
+    } catch (error) {
+      console.error("Failed to start conversation:", error);
+    }
   };
 
   return (
@@ -271,6 +281,17 @@ export default function AllProviders() {
                       }}
                     >
                       Profile
+                    </button>
+                    <button
+                      onClick={() => handleSendMessage(provider.id)}
+                      style={{
+                        ...styles.actionBtn,
+                        borderColor: p.primary,
+                        color: p.primary,
+                        background: 'transparent'
+                      }}
+                    >
+                      Message
                     </button>
                     <button
                       onClick={() => handleBookNow(provider)}

@@ -1,7 +1,7 @@
 import { query } from '../db';
 
 async function migrateToProfSchema() {
-  const client = await query('BEGIN');
+  await query('BEGIN');
 
   try {
     console.log('Starting migration to professor schema...');

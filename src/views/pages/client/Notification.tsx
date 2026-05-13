@@ -1,5 +1,6 @@
 // src/pages/client/Notification.jsx
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { styles } from "./Notification.styles";
 import axiosInstance from "@/controllers/api/axiosInstance";
@@ -53,6 +54,7 @@ const GlowBackground = ({ p }) => {
 
 export default function Notification() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { mode: theme, palette: p } = useTheme();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -83,10 +85,13 @@ export default function Notification() {
     }
   };
 
-  const handleNotificationClick = async (id) => {
+  const handleNotificationClick = async (notif) => {
     try {
-      await axiosInstance.put(`/notifications/${id}/mark-as-read`);
+      await axiosInstance.put(`/notifications/${notif.id}/mark-as-read`);
       fetchNotifications();
+      if (notif.action_link) {
+        navigate(notif.action_link);
+      }
     } catch (error) {
       console.error("Failed to mark notification as read:", error);
     }
@@ -139,7 +144,7 @@ export default function Notification() {
                   <motion.div 
                     key={n.id} 
                     whileHover={{ x: 5, background: theme === 'dark' ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.02)" }}
-                    onClick={() => handleNotificationClick(n.id)}
+                    onClick={() => handleNotificationClick(n)}
                     style={{ 
                       ...styles.notifRow, 
                       background: p.cardBg, 

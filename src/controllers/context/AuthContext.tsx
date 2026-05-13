@@ -45,7 +45,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
           // Re-fetch fresh profile from server
           const res = await axiosInstance.get(`/auth/profile/${userData.id}`);
-          const fresh = res.data.user as User;
+          const fresh = { 
+            ...res.data.user, 
+            role: res.data.role || userData.role 
+          } as User;
+          
           setUser(fresh);
           localStorage.setItem('user', JSON.stringify(fresh));
         } catch (error) {

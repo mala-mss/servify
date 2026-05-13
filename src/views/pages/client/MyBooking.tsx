@@ -1,25 +1,16 @@
 // src/pages/client/MyBooking.jsx
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useOutletContext } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "@/controllers/context/ThemeContext";
-import { BOOKINGS, INITIAL_NOTIFICATIONS } from "@/controllers/utils/mockData";
-
+import axiosInstance from "@/controllers/api/axiosInstance";
 import { useAuth } from "@/controllers/context/AuthContext";
+import { startConversation } from "@/controllers/api/chatApi";
+import { MessageSquare } from "lucide-react";
 
-type Notification = {
-  id: string | number;
-  title: string;
-  desc: string;
-  time: string;
-  unread: boolean;
-  type: string;
-  bookingId?: number;
-};
-
-const getStatusStyle = (status: string) => {
-  switch (status) {
-    case "upcoming": return { color: "#6BC8B2", bg: "rgba(107,200,178,0.1)" };
+const getStatusStyle = (status) => {
+  switch (status?.toLowerCase()) {
+    case "confirmed": return { color: "#6BC8B2", bg: "rgba(107,200,178,0.1)" };
     case "completed": return { color: "#2FB0BC", bg: "rgba(47,176,188,0.1)" };
     case "pending": return { color: "#F59E0B", bg: "rgba(245,158,11,0.1)" };
     case "cancelled": return { color: "#f87171", bg: "rgba(248,113,113,0.1)" };
@@ -61,54 +52,34 @@ const MouseGlow = ({ p }) => {
 
 export default function MyBooking() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { mode: theme, palette: p } = useTheme();
-  const { toggle } = useOutletContext();
-  const [showNotif, setShowNotif] = useState(false);
-  const [bookings, setBookings] = useState(BOOKINGS);
-  const [notifications, setNotifications] = useState(INITIAL_NOTIFICATIONS);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState("all");
   
-  // Modal states for Edit flow
   const [showEditModal, setShowEditModal] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
-  const [editData, setEditData] = useState({ date: "2026-03-26", time: "10:00" });
+  const [editData, setEditData] = useState({ date: "", time: "" });
 
-  const notifRef = useRef(null);
+  const fetchBookings = async () => {
+    try {
+      setLoading(true);
+      const response = await axiosInstance.get("/bookings");
+      if (response.data.success) {
+        setBookings(response.data.bookings);
+      }
+    } catch (error) {
+      console.error("Failed to fetch bookings:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Update dynamic notifications based on booking status
   useEffect(() => {
-    const paymentNotifs: Array<{id: string; title: string; desc: string; time: string; unread: boolean; type: string; bookingId: number}> = [];
-    bookings.forEach(bk => {
-      if (!bk.paidFirst) {
-        paymentNotifs.push({
-          id: `pay1-${bk.id}`,
-          title: "Deposit Due",
-          desc: `Initial 50% ($${bk.price/2}) for ${bk.service} is pending.`,
-          time: "Action required",
-          unread: true,
-          type: "payment",
-          bookingId: Number(bk.id)
-        });
-      }
-      if (bk.status === "completed" && !bk.paidSecond) {
-        paymentNotifs.push({
-          id: `pay2-${bk.id}`,
-          title: "Balance Due",
-          desc: `Final 50% ($${bk.price/2}) for ${bk.service} is ready to pay.`,
-          time: "Service completed",
-          unread: true,
-          type: "payment",
-          bookingId: Number(bk.id)
-        });
-      }
-    });
-
-    setNotifications(prev => {
-      const filtered = prev.filter(n => n.type !== "payment");
-      return [...paymentNotifs, ...filtered];
-    });
-  }, [bookings]);
+    if (user) fetchBookings();
+  }, [user]);
 
   const handleEdit = (bk) => {
     if (bk.status === "completed") return;
@@ -117,17 +88,25 @@ export default function MyBooking() {
     setShowEditModal(true);
   };
 
-  const handleDelete = (bk) => {
+  const handleDelete = async (bk) => {
     if (bk.status === "completed") return;
-    if (window.confirm(`Are you sure you want to cancel your ${bk.service} booking?`)) {
-      setBookings(bookings.filter(item => item.id !== bk.id));
+    if (window.confirm(`Are you sure you want to cancel your ${bk.service_name} booking?`)) {
+      try {
+        await axiosInstance.put(`/bookings/${bk.id_b}/${bk.idu_cl}/${bk.idu_sp}/status`, { status: 'cancelled' });
+        fetchBookings();
+      } catch (error) {
+        console.error("Failed to cancel booking:", error);
+      }
     }
   };
 
-  const handlePayment = (bk) => {
-    // Redirect or open notification side payment - for now we just show an alert
-    // since the user wants payment in the notification side.
-    setShowNotif(true);
+  const handleChat = async (idu_sp) => {
+    try {
+      const conv = await startConversation(idu_sp);
+      navigate(`/chat/${conv.id}`);
+    } catch (error) {
+      console.error("Failed to start conversation:", error);
+    }
   };
 
   const handleEditSubmit = () => {
@@ -135,8 +114,8 @@ export default function MyBooking() {
     setShowConfirmModal(true);
   };
 
-  const confirmReschedule = () => {
-    alert(`Reschedule request for ${selectedBooking.service} sent to ${selectedBooking.provider}!`);
+  const confirmReschedule = async () => {
+    alert(`Reschedule request for ${selectedBooking.service_name} sent to ${selectedBooking.provider_name}!`);
     setShowConfirmModal(false);
     setSelectedBooking(null);
   };
@@ -161,26 +140,13 @@ export default function MyBooking() {
   );
 
   const filteredBookings = bookings.filter(bk => 
-    activeFilter === "all" ? true : bk.status === activeFilter
+    activeFilter === "all" ? true : bk.status?.toLowerCase() === activeFilter
   );
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (notifRef.current && !notifRef.current.contains(e.target)) {
-        setShowNotif(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const toggleTheme = () => setTheme(theme === "dark" ? "light" : "dark");
 
   return (
     <div style={{ ...styles.root, background: p.bg, color: p.text }}>
       <div style={{ ...styles.bgGrid, backgroundImage: theme === 'dark' ? `radial-gradient(circle at 2px 2px, rgba(255,255,255,0.02) 1px, transparent 0)` : `radial-gradient(circle at 2px 2px, ${p.grid} 1px, transparent 0)` }} />
       <MouseGlow p={p} />
-
 
       <div style={styles.container}>
         <motion.section initial="hidden" animate="visible" variants={sectionVariants}>
@@ -190,7 +156,7 @@ export default function MyBooking() {
           </motion.div>
 
           <motion.div style={styles.filterBar} variants={itemVariants}>
-            {["all", "upcoming", "pending", "completed"].map(f => (
+            {["all", "confirmed", "pending", "completed", "cancelled"].map(f => (
               <button
                 key={f}
                 onClick={() => setActiveFilter(f)}
@@ -207,37 +173,46 @@ export default function MyBooking() {
           </motion.div>
 
           <motion.div style={styles.bookingList} variants={itemVariants}>
-            {filteredBookings.map(bk => {
+            {loading ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: p.textMuted }}>Loading your bookings...</div>
+            ) : filteredBookings.map(bk => {
               const s = getStatusStyle(bk.status);
-              const isLocked = bk.status === "completed";
+              const isLocked = bk.status === "completed" || bk.status === "cancelled";
               
               return (
                 <motion.div 
-                  key={bk.id} 
+                  key={bk.id_b} 
                   whileHover={{ borderColor: p.primary, x: 5 }}
                   style={{ ...styles.bookingRow, background: p.cardBg, borderColor: p.border }}
                 >
                   <div style={styles.rowLeft}>
-                    <div style={{ ...styles.ref, color: p.textMuted }}>{bk.id}</div>
+                    <div style={{ ...styles.ref, color: p.textMuted }}>{bk.id_b}</div>
                     <div>
-                      <div style={{ ...styles.serviceName, color: p.text }}>{bk.service}</div>
-                      <div style={{ ...styles.providerName, color: p.textMuted }}>with {bk.provider}</div>
+                      <div style={{ ...styles.serviceName, color: p.text }}>{bk.service_name}</div>
+                      <div style={{ ...styles.providerName, color: p.textMuted }}>with {bk.provider_name}</div>
                     </div>
                   </div>
                   
                   <div style={styles.rowMid}>
-                    <div style={{ ...styles.dateTime, color: p.text }}>{bk.date}</div>
+                    <div style={{ ...styles.dateTime, color: p.text }}>{new Date(bk.date).toLocaleDateString()}</div>
                     <div style={{ ...styles.dateTime, color: p.textMuted }}>{bk.time}</div>
                   </div>
 
                   <div style={styles.rowRight}>
                     <div style={{ textAlign: 'right', marginRight: 24 }}>
-                      <div style={{ ...styles.price, color: p.text }}>${bk.price}</div>
+                      <div style={{ ...styles.price, color: p.text }}>${bk.amount || bk.price || 0}</div>
                     </div>
 
                     <div style={{ ...styles.statusBadge, color: s.color, background: s.bg }}>{bk.status}</div>
                     
                     <div style={styles.actions}>
+                      <button 
+                        onClick={() => handleChat(bk.idu_sp)}
+                        style={{ ...styles.actionBtn, borderColor: p.primary, color: p.primary, display: 'flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <MessageSquare size={14} />
+                        Chat
+                      </button>
                       {!isLocked && (
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button 
@@ -261,7 +236,7 @@ export default function MyBooking() {
             })}
           </motion.div>
 
-          {filteredBookings.length === 0 && (
+          {!loading && filteredBookings.length === 0 && (
             <motion.div style={{ ...styles.empty, color: p.textMuted }}>
               No {activeFilter === "all" ? "" : activeFilter} bookings found.
             </motion.div>
@@ -306,7 +281,7 @@ export default function MyBooking() {
             }
           >
             <div style={{ color: p.text, fontSize: 14 }}>
-              <p>Are you sure you want to request a reschedule for <strong>{selectedBooking?.service}</strong>?</p>
+              <p>Are you sure you want to request a reschedule for <strong>{selectedBooking?.service_name}</strong>?</p>
               <div style={{ marginTop: 16, padding: 12, borderRadius: 8, border: `1px dashed ${p.border}` }}>
                 <div style={{ fontSize: 12, color: p.textMuted }}>New Schedule:</div>
                 <div style={{ fontWeight: 500, marginTop: 4 }}>{editData.date} at {editData.time}</div>
@@ -380,15 +355,3 @@ const styles = {
   input: { width: "100%", padding: "12px 16px", borderRadius: 12, border: "1px solid", fontSize: 14, outline: "none" },
   inputLabel: { display: "block", fontSize: 12, marginBottom: 6 }
 };
-
-
-
-
-
-
-
-
-
-
-
-

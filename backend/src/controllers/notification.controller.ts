@@ -7,7 +7,7 @@ export const getUserNotifications = async (req: AuthRequest, res: Response): Pro
 
   try {
     const result = await query(
-      `SELECT id, title, description, type, is_read, created_at
+      `SELECT id, title, description, type, is_read, action_link, created_at
        FROM notification
        WHERE user_id = $1
        ORDER BY created_at DESC`,
@@ -39,7 +39,7 @@ export const markAsRead = async (req: AuthRequest, res: Response): Promise<void>
       `UPDATE notification
        SET is_read = true
        WHERE id = $1 AND user_id = $2
-       RETURNING id, title, description, type, is_read, created_at`,
+       RETURNING id, title, description, type, is_read, action_link, created_at`,
       [id, userId]
     );
 
@@ -110,12 +110,13 @@ export const createNotificationInternal = async (
   userId: number,
   title: string,
   description: string,
-  type: string
+  type: string,
+  actionLink: string | null = null
 ): Promise<void> => {
   try {
     await query(
-      'INSERT INTO notification (user_id, title, description, type) VALUES ($1, $2, $3, $4)',
-      [userId, title, description, type]
+      'INSERT INTO notification (user_id, title, description, type, action_link) VALUES ($1, $2, $3, $4, $5)',
+      [userId, title, description, type, actionLink]
     );
   } catch (error) {
     console.error('Create notification error:', error);

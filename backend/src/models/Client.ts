@@ -1,4 +1,4 @@
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/database';
 
 interface ClientAttributes {
@@ -16,6 +16,7 @@ Client.init(
     idU_cl: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      field: 'idu_cl',
       references: {
         model: 'user',
         key: 'id',

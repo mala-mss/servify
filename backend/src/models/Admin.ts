@@ -1,4 +1,4 @@
-import { DataTypes, Model, Optional } from 'sequelize';
+import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/database';
 
 interface AdminAttributes {
@@ -16,6 +16,7 @@ Admin.init(
     idU_A: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      field: 'idU_A',
       references: {
         model: 'user',
         key: 'id',

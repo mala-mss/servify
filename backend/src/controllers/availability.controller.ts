@@ -137,9 +137,9 @@ export const deleteSchedule = async (req: AuthRequest, res: Response): Promise<v
   }
 
   await provider.update({
-    day_of_week: null,
-    start_time: null,
-    end_time: null,
+    day_of_week: undefined,
+    start_time: undefined,
+    end_time: undefined,
   });
 
   res.json({ message: 'Availability deleted successfully' });
@@ -151,7 +151,8 @@ export const getProviderSchedule = async (req: AuthRequest, res: Response): Prom
   const provider = await ServiceProvider.findByPk(providerId);
   
   if (!provider || !provider.day_of_week) {
-    return res.json({ schedules: { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] } });
+    res.json({ schedules: { 0:[], 1:[], 2:[], 3:[], 4:[], 5:[], 6:[] } });
+    return;
   }
 
   const availability = {

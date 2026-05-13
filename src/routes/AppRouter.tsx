@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Outlet } from 'react-router-dom';
+import { Routes, Route, Outlet, useNavigate } from 'react-router-dom';
 import ProtectedRoute from './ProtectedRoute';
 import RoleRedirect from './RoleRedirect';
 import { useAuth } from '@/controllers/context/AuthContext';
@@ -26,6 +26,8 @@ import MyDependants from '@/views/pages/client/MyDependants';
 import DependantsDetail from '@/views/pages/client/DependantsDetail';
 import ClientProfile from '@/views/pages/client/Profile';
 import ClientNotification from '@/views/pages/client/Notification';
+import ChatPage from '@/views/pages/chat/ChatPage';
+import ChatInbox from '@/views/pages/chat/ChatInbox';
 
 // Provider Pages
 import ProviderLayout from '@/views/pages/provider/ProviderLayout';
@@ -42,6 +44,7 @@ import MyDocuments from '@/views/pages/provider/MyDocuments';
 import Reviews from '@/views/pages/provider/Reviews';
 import ProviderProfile from '@/views/pages/provider/Profile';
 import ProviderNotifications from '@/views/pages/provider/Notifications';
+import ClientProfileDetail from '@/views/pages/provider/ClientProfile';
 
 // Admin Pages
 import AdminLayout from '@/views/pages/admin/AdminLayout';
@@ -67,12 +70,11 @@ import axiosInstance from '@/controllers/api/axiosInstance';
 
 const ClientLayout: React.FC = () => {
   const { mode: theme, toggle, palette } = useTheme();
+  const navigate = useNavigate();
 
   const handleSearch = async (query: string) => {
     console.log("Global search:", query);
-    if (window.location.pathname !== '/client/home') {
-        window.location.href = `/client/home?search=${encodeURIComponent(query)}`;
-    }
+    navigate(`/client/home?search=${encodeURIComponent(query)}`);
   };
 
   return (
@@ -136,6 +138,14 @@ const AppRouter: React.FC = () => {
         </Route>
       </Route>
 
+      {/* Common Chat Routes */}
+      <Route element={<ProtectedRoute allowedRoles={['client', 'provider']} />}>
+        <Route element={user?.role === 'provider' ? <ProviderLayout /> : <ClientLayout />}>
+          <Route path="/chat/inbox" element={<ChatInbox />} />
+          <Route path="/chat/:id" element={<ChatPage />} />
+        </Route>
+      </Route>
+
       {/* Protected Provider Routes */}
       <Route element={<ProtectedRoute allowedRoles={['provider']} />}>
         <Route element={<ProviderLayout />}>
@@ -152,6 +162,7 @@ const AppRouter: React.FC = () => {
           <Route path="/provider/reviews" element={<Reviews />} />
           <Route path="/provider/profile" element={<ProviderProfile />} />
           <Route path="/provider/notifications" element={<ProviderNotifications />} />
+          <Route path="/profile/client/:id" element={<ClientProfileDetail />} />
         </Route>
       </Route>
     {/* Admin Routes - No Auth Required */}

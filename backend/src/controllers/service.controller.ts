@@ -114,7 +114,7 @@ export const deleteService = async (req: AuthRequest, res: Response): Promise<vo
   }
 };
 
-export const getCategories = async (req: Request, res: Response): Promise<void> => {
+export const getCategories = async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
     const result = await query('SELECT * FROM service_category');
     res.json({ success: true, categories: result.rows || [] });

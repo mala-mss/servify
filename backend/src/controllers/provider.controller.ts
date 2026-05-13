@@ -17,7 +17,7 @@ export const searchProviders = async (req: Request, res: Response): Promise<void
         u.phone_number,
         u.address as location,
         u.profile_picture,
-        sp.idU_SP as provider_id,
+        sp.idu_sp as provider_id,
         sp.bio,
         sp.years_of_exp,
         sp.rating,
@@ -26,10 +26,10 @@ export const searchProviders = async (req: Request, res: Response): Promise<void
         COALESCE(array_agg(DISTINCT s.name) FILTER (WHERE s.name IS NOT NULL), '{}') as services,
         COALESCE(array_agg(DISTINCT sc.name) FILTER (WHERE sc.name IS NOT NULL), '{}') as categories
       FROM "user" u
-      JOIN service_provider sp ON u.id = sp.idU_SP
-      LEFT JOIN providing sps ON sp.idU_SP = sps.idU_SP
-      LEFT JOIN service s ON sps.id_S = s.id_S
-      LEFT JOIN service_category sc ON s.id_C = sc.id_C
+      JOIN service_provider sp ON u.id = sp.idu_sp
+      LEFT JOIN providing sps ON sp.idu_sp = sps.idu_sp
+      LEFT JOIN service s ON sps.id_s = s.id_s
+      LEFT JOIN service_category sc ON s.id_c = sc.id_c
       WHERE 1=1
     `;
 
@@ -48,7 +48,7 @@ export const searchProviders = async (req: Request, res: Response): Promise<void
       paramIndex++;
     }
 
-    sql += ` GROUP BY u.id, sp.idU_SP`;
+    sql += ` GROUP BY u.id, sp.idu_sp`;
 
     if (service) {
         sql += ` HAVING array_to_string(array_agg(s.name), ',') ILIKE $${paramIndex}`;
@@ -64,15 +64,15 @@ export const searchProviders = async (req: Request, res: Response): Promise<void
         const allProvidersSql = `
             SELECT
                 u.id as user_id, (u.fname || ' ' || u.lname) as name, u.email, u.phone_number, u.address as location, u.profile_picture,
-                sp.idU_SP as provider_id, sp.bio, sp.years_of_exp, sp.rating, sp.review_count, sp.price_per_hour,
+                sp.idu_sp as provider_id, sp.bio, sp.years_of_exp, sp.rating, sp.review_count, sp.price_per_hour,
                 COALESCE(array_agg(DISTINCT s.name) FILTER (WHERE s.name IS NOT NULL), '{}') as services,
                 COALESCE(array_agg(DISTINCT sc.name) FILTER (WHERE sc.name IS NOT NULL), '{}') as categories
             FROM "user" u
-            JOIN service_provider sp ON u.id = sp.idU_SP
-            LEFT JOIN providing sps ON sp.idU_SP = sps.idU_SP
-            LEFT JOIN service s ON sps.id_S = s.id_S
-            LEFT JOIN service_category sc ON s.id_C = sc.id_C
-            GROUP BY u.id, sp.idU_SP
+            JOIN service_provider sp ON u.id = sp.idu_sp
+            LEFT JOIN providing sps ON sp.idu_sp = sps.idu_sp
+            LEFT JOIN service s ON sps.id_s = s.id_s
+            LEFT JOIN service_category sc ON s.id_c = sc.id_c
+            GROUP BY u.id, sp.idu_sp
             ORDER BY sp.rating DESC
         `;
         const allRes = await query(allProvidersSql);
@@ -109,7 +109,7 @@ export const getProviderById = async (req: Request, res: Response): Promise<void
         u.phone_number,
         u.address as location,
         u.profile_picture,
-        sp.idU_SP as provider_id,
+        sp.idu_sp as provider_id,
         sp.bio,
         sp.years_of_exp,
         sp.rating,
@@ -118,12 +118,12 @@ export const getProviderById = async (req: Request, res: Response): Promise<void
         COALESCE(array_agg(DISTINCT s.name) FILTER (WHERE s.name IS NOT NULL), '{}') as services,
         COALESCE(array_agg(DISTINCT sc.name) FILTER (WHERE sc.name IS NOT NULL), '{}') as categories
       FROM "user" u
-      JOIN service_provider sp ON u.id = sp.idU_SP
-      LEFT JOIN providing sps ON sp.idU_SP = sps.idU_SP
-      LEFT JOIN service s ON sps.id_S = s.id_S
-      LEFT JOIN service_category sc ON s.id_C = sc.id_C
-      WHERE sp.idU_SP = $1
-      GROUP BY u.id, sp.idU_SP
+      JOIN service_provider sp ON u.id = sp.idu_sp
+      LEFT JOIN providing sps ON sp.idu_sp = sps.idu_sp
+      LEFT JOIN service s ON sps.id_s = s.id_s
+      LEFT JOIN service_category sc ON s.id_c = sc.id_c
+      WHERE sp.idu_sp = $1
+      GROUP BY u.id, sp.idu_sp
     `;
 
     const result = await query(sql, [id]);
@@ -149,7 +149,7 @@ export const getProviderDashboard = async (req: AuthRequest, res: Response): Pro
   const userId = req.userId;
 
   try {
-    const providerRes = await query('SELECT * FROM service_provider WHERE idU_SP = $1', [userId]);
+    const providerRes = await query('SELECT * FROM service_provider WHERE idu_sp = $1', [userId]);
     if (providerRes.rows.length === 0) {
       res.status(403).json({ success: false, message: 'Not a service provider' });
       return;
@@ -161,21 +161,21 @@ export const getProviderDashboard = async (req: AuthRequest, res: Response): Pro
     const todayJobsRes = await query(`
       SELECT b.*, s.name as service_name, (u.fname || ' ' || u.lname) as client_name
       FROM booking b
-      JOIN service s ON b.id_S = s.id_S
-      JOIN client c ON b.idU_cl = c.idU_cl
-      JOIN "user" u ON c.idU_cl = u.id
-      WHERE b.idU_SP = $1 AND b.date = $2
+      JOIN service s ON b.service_id = s.id_s
+      JOIN client c ON b.idu_cl = c.idu_cl
+      JOIN "user" u ON c.idu_cl = u.id
+      WHERE b.idu_sp = $1 AND b.date = $2
       ORDER BY b.time ASC
     `, [providerId, today]);
 
     const pendingRequestsRes = await query(`
-      SELECT b.*, s.name as service_name, (u.fname || ' ' || u.lname) as client_name
-      FROM booking b
-      JOIN service s ON b.id_S = s.id_S
-      JOIN client c ON b.idU_cl = c.idU_cl
-      JOIN "user" u ON c.idU_cl = u.id
-      WHERE b.idU_SP = $1 AND b.status = 'pending'
-      ORDER BY b.date DESC
+      SELECT br.*, s.name as service_name, (u.fname || ' ' || u.lname) as client_name
+      FROM booking_request br
+      JOIN service s ON br.service_id = s.id_s
+      JOIN client c ON br.idu_cl = c.idu_cl
+      JOIN "user" u ON c.idu_cl = u.id
+      WHERE br.idu_sp = $1 AND br.status = 'pending'
+      ORDER BY br.date DESC
       LIMIT 5
     `, [providerId]);
 
@@ -184,8 +184,8 @@ export const getProviderDashboard = async (req: AuthRequest, res: Response): Pro
         COUNT(*) as total_jobs,
         COALESCE(SUM(p.amount), 0) as total_earnings
       FROM booking b
-      LEFT JOIN payment p ON b.id_S = p.id_S
-      WHERE b.idU_SP = $1 AND b.status = 'completed'
+      LEFT JOIN payment p ON b.service_id = p.id_s
+      WHERE b.idu_sp = $1 AND b.status = 'completed'
     `, [providerId]);
 
     res.json({
@@ -249,7 +249,7 @@ export const addProviderService = async (req: AuthRequest, res: Response): Promi
   }
 
   try {
-    const providerRes = await query("SELECT idU_SP FROM service_provider WHERE idU_SP = $1", [userId]);
+    const providerRes = await query("SELECT idu_sp FROM service_provider WHERE idu_sp = $1", [userId]);
 
     if (providerRes.rows.length === 0) {
       res.status(404).json({ success: false, message: "Provider profile not found for user ID " + userId });
@@ -259,7 +259,7 @@ export const addProviderService = async (req: AuthRequest, res: Response): Promi
     const providerId = providerRes.rows[0].idu_sp;
 
     await query(
-      "INSERT INTO providing (idU_SP, id_S) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+      "INSERT INTO providing (idu_sp, id_s) VALUES ($1, $2) ON CONFLICT DO NOTHING",
       [providerId, parseInt(serviceId)]
     );
 
@@ -278,7 +278,7 @@ export const deleteProviderService = async (req: AuthRequest, res: Response): Pr
   const userId = req.userId;
 
   try {
-    const providerRes = await query('SELECT idU_SP FROM service_provider WHERE idU_SP = $1', [userId]);
+    const providerRes = await query('SELECT idu_sp FROM service_provider WHERE idu_sp = $1', [userId]);
     if (providerRes.rows.length === 0) {
         res.status(404).json({ success: false, message: 'Provider not found' });
         return;
@@ -286,7 +286,7 @@ export const deleteProviderService = async (req: AuthRequest, res: Response): Pr
     const providerId = providerRes.rows[0].idu_sp;
 
     await query(
-      'DELETE FROM providing WHERE idU_SP = $1 AND id_S = $2',
+      'DELETE FROM providing WHERE idu_sp = $1 AND id_s = $2',
       [providerId, id]
     );
 
@@ -303,23 +303,23 @@ export const getProviderEarnings = async (req: AuthRequest, res: Response): Prom
   const userId = req.userId;
 
   try {
-    const providerRes = await query('SELECT idU_SP FROM service_provider WHERE idU_SP = $1', [userId]);
+    const providerRes = await query('SELECT idu_sp FROM service_provider WHERE idu_sp = $1', [userId]);
     const providerId = providerRes.rows[0].idu_sp;
 
     const transactionsRes = await query(`
       SELECT
-        p.id_P as id,
+        p.id_p as id,
         (u.fname || ' ' || u.lname) as client_name,
         s.name as service_name,
         p.amount,
         p.created_at as date,
         p.status
       FROM payment p
-      JOIN booking b ON p.id_S = b.id_S
-      JOIN service s ON b.id_S = s.id_S
-      JOIN client c ON b.idU_cl = c.idU_cl
-      JOIN "user" u ON c.idU_cl = u.id
-      WHERE b.idU_SP = $1
+      JOIN service s ON p.id_s = s.id_s
+      JOIN booking b ON b.service_id = s.id_s
+      JOIN client c ON b.idu_cl = c.idu_cl
+      JOIN "user" u ON c.idu_cl = u.id
+      WHERE b.idu_sp = $1
       ORDER BY p.created_at DESC
     `, [providerId]);
 
@@ -333,8 +333,9 @@ export const getProviderEarnings = async (req: AuthRequest, res: Response): Prom
         SUM(amount) FILTER (WHERE status = 'unpaid') as pending_payout,
         COUNT(*) FILTER (WHERE created_at >= $2 AND status = 'paid') as month_jobs
       FROM payment p
-      JOIN booking b ON p.id_S = b.id_S
-      WHERE b.idU_SP = $1
+      JOIN service s ON p.id_s = s.id_s
+      JOIN booking b ON b.service_id = s.id_s
+      WHERE b.idu_sp = $1
     `, [providerId, firstDayOfMonth]);
 
     const stats = statsRes.rows[0];
@@ -372,7 +373,7 @@ export const updateProviderProfile = async (req: AuthRequest, res: Response): Pr
     );
 
     await query(
-      'UPDATE service_provider SET bio = $1, years_of_exp = $2, price_per_hour = $3 WHERE idU_SP = $4',
+      'UPDATE service_provider SET bio = $1, years_of_exp = $2, price_per_hour = $3 WHERE idu_sp = $4',
       [bio, years_of_exp, price_per_hour, userId]
     );
 
@@ -395,7 +396,7 @@ export const getMyProviderProfile = async (req: AuthRequest, res: Response): Pro
         (u.fname || ' ' || u.lname) as name, u.email, u.phone_number, u.address,
         sp.bio, sp.years_of_exp, sp.price_per_hour, sp.rating, sp.review_count
       FROM "user" u
-      JOIN service_provider sp ON u.id = sp.idU_SP
+      JOIN service_provider sp ON u.id = sp.idu_sp
       WHERE u.id = $1
     `;
     const result = await query(sql, [userId]);

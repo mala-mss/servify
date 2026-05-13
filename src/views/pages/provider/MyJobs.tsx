@@ -2,11 +2,15 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "@/controllers/context/ThemeContext";
 import axiosInstance from "@/controllers/api/axiosInstance";
+import { useNavigate } from "react-router-dom";
+import { startConversation } from "@/controllers/api/chatApi";
+import { MessageSquare } from "lucide-react";
 
 type JobStatus = "confirmed" | "pending" | "in_progress" | "completed" | "cancelled" | "declined";
 
 interface Job {
   id_booking: number;
+  idu_cl: number;
   client_name: string;
   service_name: string;
   time: string;
@@ -27,6 +31,7 @@ const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string }
 
 export default function MyJobs() {
   const { palette: p } = useTheme();
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -54,6 +59,16 @@ export default function MyJobs() {
       fetchJobs();
     } catch (error) {
       console.error("Failed to update status:", error);
+    }
+  };
+
+  const handleMessageClient = async (idu_cl: number) => {
+    try {
+      const conv = await startConversation(idu_cl);
+      navigate(`/chat/${conv.id}`);
+    } catch (error) {
+      console.error("Failed to start conversation:", error);
+      alert("Could not open chat with client.");
     }
   };
 
@@ -145,6 +160,24 @@ export default function MyJobs() {
                   
                   <div style={{ display: 'flex', gap: 8, flexDirection: 'column', alignItems: 'flex-end' }}>
                     <div style={{ display: 'flex', gap: 8 }}>
+                      <button
+                        onClick={() => handleMessageClient(job.idu_cl)}
+                        style={{ 
+                          fontSize: "12px", 
+                          color: p.primary, 
+                          background: "rgba(47,176,188,0.1)", 
+                          border: `1px solid ${p.primary}`, 
+                          borderRadius: 6, 
+                          padding: "6px 12px", 
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px"
+                        }}
+                      >
+                        <MessageSquare size={14} />
+                        Message
+                      </button>
                       {job.status === 'confirmed' && (
                           <button
                               onClick={() => updateStatus(job.id_booking, 'in_progress')}

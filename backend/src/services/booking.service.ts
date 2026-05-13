@@ -1,4 +1,4 @@
-import { Booking, BookingRequest, ServiceProvider, Client } from '../models';
+import { Booking, BookingRequest } from '../models';
 import { createNotificationInternal } from '../controllers/notification.controller';
 
 /**

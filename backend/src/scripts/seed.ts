@@ -15,7 +15,7 @@ const seedDatabase = async () => {
     const hashedPassword = await bcrypt.hash('password123', 10);
 
     // 1. Create Accounts
-    const accounts = await Account.bulkCreate([
+    await Account.bulkCreate([
       { email: 'client@example.com', password: hashedPassword, status: 'active' },
       { email: 'provider@example.com', password: hashedPassword, status: 'active' },
       { email: 'admin@example.com', password: hashedPassword, status: 'active' }
@@ -33,12 +33,12 @@ const seedDatabase = async () => {
     const providerUser = users.find(u => u.email === 'provider@example.com');
 
     if (clientUser) {
-      await Client.create({ user_id: clientUser.id });
+      await Client.create({ idU_cl: clientUser.id });
     }
 
     if (providerUser) {
-      await ServiceProvider.create({ 
-        user_id: providerUser.id,
+      await ServiceProvider.create({
+        idU_SP: providerUser.id,
         bio: 'Professional caregiver',
         years_of_exp: 5,
         price_per_hour: 25.00

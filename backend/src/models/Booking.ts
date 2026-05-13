@@ -29,21 +29,24 @@ Booking.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+      field: 'id_b',
     },
     idU_cl: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      field: 'idu_cl',
       references: {
         model: 'client',
-        key: 'idU_cl',
+        key: 'idu_cl',
       },
     },
     idU_SP: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      field: 'idu_sp',
       references: {
         model: 'service_provider',
-        key: 'idU_SP',
+        key: 'idu_sp',
       },
     },
     date: {
