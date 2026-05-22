@@ -5,17 +5,17 @@ import { Admin } from './Admin';
 import { Client } from './Client';
 import { ServiceProvider } from './ServiceProvider';
 import { InscriptionRequest } from './InscriptionRequest';
+import { DocCv } from './DocCv';
 import { AuthorizedPerson } from './AuthorizedPerson';
 import { Dependant } from './Dependant';
-import { MedicalInfo } from './MedicalInfo';
-import { DependantFile } from './DependantFile';
+import { SpecificationsMedicalStat } from './SpecificationsMedicalStat';
 import { ServiceCategory } from './ServiceCategory';
 import { Service } from './Service';
 import { ServiceProviderService } from './ServiceProviderService';
-import { Document } from './Document';
-import { Specification } from './Specification';
+import { DocumentRequest } from './DocumentRequest';
 import { BookingRequest } from './BookingRequest';
 import { Booking } from './Booking';
+import { Concerns } from './Concerns';
 import { Payment } from './Payment';
 import { Task } from './Task';
 import { File } from './File';
@@ -26,134 +26,146 @@ import { Conversation } from './Conversation';
 import { Message } from './Message';
 import { UserPublicKey } from './UserPublicKey';
 
-// Account & User
+// --- Associations ---
+
+// 1. Account & User
 Account.hasOne(User, { foreignKey: 'email', sourceKey: 'email', as: 'user' });
 User.belongsTo(Account, { foreignKey: 'email', targetKey: 'email', as: 'account' });
 
-// User Public Key
-User.hasOne(UserPublicKey, { foreignKey: 'user_id', as: 'publicKey' });
-UserPublicKey.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
-
-// Role Associations
+// 2. User & Roles
 User.hasOne(Admin, { foreignKey: 'idU_A', as: 'admin' });
 Admin.belongsTo(User, { foreignKey: 'idU_A', as: 'user' });
 
-User.hasOne(Client, { foreignKey: 'idu_cl', as: 'client' });
-Client.belongsTo(User, { foreignKey: 'idu_cl', as: 'user' });
+User.hasOne(Client, { foreignKey: 'idU_CL', as: 'client' });
+Client.belongsTo(User, { foreignKey: 'idU_CL', as: 'user' });
 
-User.hasOne(ServiceProvider, { foreignKey: 'idu_sp', as: 'provider' });
-ServiceProvider.belongsTo(User, { foreignKey: 'idu_sp', as: 'user' });
+User.hasOne(ServiceProvider, { foreignKey: 'idU_SP', as: 'serviceProvider' });
+ServiceProvider.belongsTo(User, { foreignKey: 'idU_SP', as: 'user' });
 
-// Inscription Request
-ServiceProvider.hasMany(InscriptionRequest, { foreignKey: 'idu_sp', as: 'inscriptionRequests' });
-InscriptionRequest.belongsTo(ServiceProvider, { foreignKey: 'idu_sp', as: 'provider' });
+// 3. InscriptionRequest
+Admin.hasMany(InscriptionRequest, { foreignKey: 'idU_A', as: 'handledRequests' });
+InscriptionRequest.belongsTo(Admin, { foreignKey: 'idU_A', as: 'admin' });
 
-// Authorized Person
-Client.hasMany(AuthorizedPerson, { foreignKey: 'idu_cl', as: 'authorizedPersons' });
-AuthorizedPerson.belongsTo(Client, { foreignKey: 'idu_cl', as: 'client' });
+// 4. DocCv
+InscriptionRequest.hasMany(DocCv, { foreignKey: 'id_R', as: 'documents' });
+DocCv.belongsTo(InscriptionRequest, { foreignKey: 'id_R', as: 'request' });
 
-// Dependant & Medical Info
-Client.hasMany(Dependant, { foreignKey: 'idu_cl', as: 'dependants' });
-Dependant.belongsTo(Client, { foreignKey: 'idu_cl', as: 'client' });
+ServiceProvider.hasMany(DocCv, { foreignKey: 'idU_SP', as: 'cvDocuments' });
+DocCv.belongsTo(ServiceProvider, { foreignKey: 'idU_SP', as: 'provider' });
 
-Dependant.hasOne(MedicalInfo, { foreignKey: 'id_dep', as: 'medicalInfo' });
-MedicalInfo.belongsTo(Dependant, { foreignKey: 'id_dep', as: 'dependant' });
+// 5. AuthorizedPerson
+Client.hasMany(AuthorizedPerson, { foreignKey: 'idU_CL', as: 'authorizedPersons' });
+AuthorizedPerson.belongsTo(Client, { foreignKey: 'idU_CL', as: 'client' });
 
-Dependant.hasMany(DependantFile, { foreignKey: 'id_dep', as: 'files' });
-DependantFile.belongsTo(Dependant, { foreignKey: 'id_dep', as: 'dependant' });
+// 6. Dependant & SpecificationsMedicalStat
+Client.hasMany(Dependant, { foreignKey: 'idU_CL', as: 'dependants' });
+Dependant.belongsTo(Client, { foreignKey: 'idU_CL', as: 'client' });
 
-// Service & Category
-ServiceCategory.hasMany(Service, { foreignKey: 'id_c', as: 'services' });
-Service.belongsTo(ServiceCategory, { foreignKey: 'id_c', as: 'category' });
+Dependant.hasMany(SpecificationsMedicalStat, { foreignKey: 'id_dep', as: 'medicalStats' });
+SpecificationsMedicalStat.belongsTo(Dependant, { foreignKey: 'id_dep', as: 'dependant' });
 
-// Service Provider & Service (Junction)
-ServiceProvider.belongsToMany(Service, { 
+// 7. ServiceCategory & Service
+ServiceCategory.hasMany(Service, { foreignKey: 'id_C', as: 'services' });
+Service.belongsTo(ServiceCategory, { foreignKey: 'id_C', as: 'category' });
+
+// 8. Providing (ServiceProvider <-> Service)
+ServiceProvider.belongsToMany(Service, {
   through: ServiceProviderService,
-  foreignKey: 'idu_sp',
-  otherKey: 'id_s',
-  as: 'services'
+  foreignKey: 'idU_SP',
+  otherKey: 'id_S',
+  as: 'services',
 });
 Service.belongsToMany(ServiceProvider, {
   through: ServiceProviderService,
-  foreignKey: 'id_s',
-  otherKey: 'idu_sp',
-  as: 'providers'
+  foreignKey: 'id_S',
+  otherKey: 'idU_SP',
+  as: 'providers',
 });
 
-// Provider Availability (Fields are now in ServiceProvider model, keeping association if model exists)
-// ServiceProvider.hasMany(ProviderAvailability, { foreignKey: 'service_provider_id', as: 'availabilities' });
+// 9. DocumentRequest
+Client.hasMany(DocumentRequest, { foreignKey: 'idU_CL', as: 'documentRequests' });
+DocumentRequest.belongsTo(Client, { foreignKey: 'idU_CL', as: 'client' });
 
-// Document & Specification
-ServiceProvider.hasMany(Document, { foreignKey: 'idu_sp', as: 'providerDocuments' });
-Document.belongsTo(ServiceProvider, { foreignKey: 'idu_sp', as: 'provider' });
+ServiceProvider.hasMany(DocumentRequest, { foreignKey: 'idU_SP', as: 'providerDocumentRequests' });
+DocumentRequest.belongsTo(ServiceProvider, { foreignKey: 'idU_SP', as: 'provider' });
 
-Client.hasMany(Document, { foreignKey: 'idu_cl', as: 'clientDocuments' });
-Document.belongsTo(Client, { foreignKey: 'idu_cl', as: 'client' });
+// 10. BookingRequest
+Client.hasMany(BookingRequest, { foreignKey: 'idU_CL', as: 'sentBookingRequests' });
+BookingRequest.belongsTo(Client, { foreignKey: 'idU_CL', as: 'client' });
 
-Document.hasMany(Specification, { foreignKey: 'id_doc', as: 'specifications' });
-Specification.belongsTo(Document, { foreignKey: 'id_doc', as: 'document' });
+ServiceProvider.hasMany(BookingRequest, { foreignKey: 'idU_SP', as: 'receivedBookingRequests' });
+BookingRequest.belongsTo(ServiceProvider, { foreignKey: 'idU_SP', as: 'provider' });
 
-// Booking Request
-Client.hasMany(BookingRequest, { foreignKey: 'idu_cl', as: 'bookingRequests' });
-BookingRequest.belongsTo(Client, { foreignKey: 'idu_cl', as: 'client' });
+Service.hasMany(BookingRequest, { foreignKey: 'id_S', as: 'bookingRequests' });
+BookingRequest.belongsTo(Service, { foreignKey: 'id_S', as: 'service' });
 
-ServiceProvider.hasMany(BookingRequest, { foreignKey: 'idu_sp', as: 'providerBookingRequests' });
-BookingRequest.belongsTo(ServiceProvider, { foreignKey: 'idu_sp', as: 'provider' });
+// 11. Booking
+Client.hasMany(Booking, { foreignKey: 'idU_CL', as: 'bookings' });
+Booking.belongsTo(Client, { foreignKey: 'idU_CL', as: 'client' });
 
-Service.hasMany(BookingRequest, { foreignKey: 'service_id', as: 'bookingRequests' });
-BookingRequest.belongsTo(Service, { foreignKey: 'service_id', as: 'service' });
+ServiceProvider.hasMany(Booking, { foreignKey: 'idU_SP', as: 'providerBookings' });
+Booking.belongsTo(ServiceProvider, { foreignKey: 'idU_SP', as: 'provider' });
 
-// Booking
-Client.hasMany(Booking, { foreignKey: 'idu_cl', as: 'bookings' });
-Booking.belongsTo(Client, { foreignKey: 'idu_cl', as: 'client' });
+Service.hasMany(Booking, { foreignKey: 'id_S', as: 'bookings' });
+Booking.belongsTo(Service, { foreignKey: 'id_S', as: 'service' });
 
-ServiceProvider.hasMany(Booking, { foreignKey: 'idu_sp', as: 'providerBookings' });
-Booking.belongsTo(ServiceProvider, { foreignKey: 'idu_sp', as: 'provider' });
+// 12. Concerns (Linked to Booking via composite key)
+// Note: Sequelize associations for composite keys are limited. Usually handled via manual queries or custom methods if needed.
+// However, we can define the relationship to Dependant.
+Dependant.hasMany(Concerns, { foreignKey: 'id_dep', as: 'concerns' });
+Concerns.belongsTo(Dependant, { foreignKey: 'id_dep', as: 'dependant' });
 
-// Payment
-Service.hasMany(Payment, { foreignKey: 'id_s', as: 'payments' });
-Payment.belongsTo(Service, { foreignKey: 'id_s', as: 'service' });
+// 13. Payment (Linked to Booking via composite key)
+Booking.hasMany(Payment, { 
+  foreignKey: 'idU_CL', 
+  sourceKey: 'idU_CL',
+  as: 'payments' 
+});
+// Payment.belongsTo(Booking, { foreignKey: 'idU_CL', targetKey: 'idU_CL' }); // Simplified
 
-// Task & File
-Client.hasMany(Task, { foreignKey: 'idu_cl', as: 'tasks' });
-Task.belongsTo(Client, { foreignKey: 'idu_cl', as: 'client' });
+// 14. Task & File
+Booking.hasMany(Task, { 
+  foreignKey: 'idU_CL',
+  sourceKey: 'idU_CL',
+  as: 'tasks'
+});
+Task.hasMany(File, { foreignKey: 'idT', as: 'files' });
+File.belongsTo(Task, { foreignKey: 'idT', as: 'task' });
 
-ServiceProvider.hasMany(Task, { foreignKey: 'idu_sp', as: 'providerTasks' });
-Task.belongsTo(ServiceProvider, { foreignKey: 'idu_sp', as: 'provider' });
+// 15. Report
+Account.hasMany(Report, { foreignKey: 'email1', as: 'sentReports' });
+Report.belongsTo(Account, { foreignKey: 'email1', as: 'reporter' });
 
-Task.hasMany(File, { foreignKey: 'idt', as: 'files' });
-File.belongsTo(Task, { foreignKey: 'idt', as: 'task' });
+Account.hasMany(Report, { foreignKey: 'email2', as: 'receivedReports' });
+Report.belongsTo(Account, { foreignKey: 'email2', as: 'reported' });
 
-// Report
-Account.hasMany(Report, { foreignKey: 'id_reporter', as: 'sentReports' });
-Account.hasMany(Report, { foreignKey: 'id_reported', as: 'receivedReports' });
-Report.belongsTo(Account, { foreignKey: 'id_reporter', as: 'reporter' });
-Report.belongsTo(Account, { foreignKey: 'id_reported', as: 'reported' });
+// 16. Feedback
+Account.hasMany(Feedback, { foreignKey: 'email1', as: 'sentFeedbacks' });
+Feedback.belongsTo(Account, { foreignKey: 'email1', as: 'reporter' });
 
-// Feedback
-Client.hasMany(Feedback, { foreignKey: 'idu_cl', as: 'feedbacks' });
-Feedback.belongsTo(Client, { foreignKey: 'idu_cl', as: 'client' });
+Account.hasMany(Feedback, { foreignKey: 'email2', as: 'receivedFeedbacks' });
+Feedback.belongsTo(Account, { foreignKey: 'email2', as: 'reported' });
 
-ServiceProvider.hasMany(Feedback, { foreignKey: 'idu_sp', as: 'providerFeedbacks' });
-Feedback.belongsTo(ServiceProvider, { foreignKey: 'idu_sp', as: 'provider' });
-
-// Notification
+// 17. Notification
 User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications' });
 Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
-// Conversations
-Client.hasMany(Conversation, { foreignKey: 'idu_cl', as: 'conversations' });
-Conversation.belongsTo(Client, { foreignKey: 'idu_cl', as: 'client' });
+// 18. Conversation & Message
+Client.hasMany(Conversation, { foreignKey: 'idU_CL', as: 'conversations' });
+Conversation.belongsTo(Client, { foreignKey: 'idU_CL', as: 'client' });
 
-ServiceProvider.hasMany(Conversation, { foreignKey: 'idu_sp', as: 'providerConversations' });
-Conversation.belongsTo(ServiceProvider, { foreignKey: 'idu_sp', as: 'provider' });
+ServiceProvider.hasMany(Conversation, { foreignKey: 'idU_SP', as: 'providerConversations' });
+Conversation.belongsTo(ServiceProvider, { foreignKey: 'idU_SP', as: 'provider' });
 
-// Messages
 Conversation.hasMany(Message, { foreignKey: 'conversation_id', as: 'messages' });
 Message.belongsTo(Conversation, { foreignKey: 'conversation_id', as: 'conversation' });
 
 User.hasMany(Message, { foreignKey: 'sender_id', as: 'sentMessages' });
 Message.belongsTo(User, { foreignKey: 'sender_id', as: 'sender' });
+
+// 19. UserPublicKey
+User.hasOne(UserPublicKey, { foreignKey: 'user_id', as: 'publicKey' });
+UserPublicKey.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 export {
   sequelize,
@@ -163,17 +175,17 @@ export {
   Client,
   ServiceProvider,
   InscriptionRequest,
+  DocCv,
   AuthorizedPerson,
   Dependant,
-  MedicalInfo,
-  DependantFile,
+  SpecificationsMedicalStat,
   ServiceCategory,
   Service,
   ServiceProviderService,
-  Document,
-  Specification,
+  DocumentRequest,
   BookingRequest,
   Booking,
+  Concerns,
   Payment,
   Task,
   File,

@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTheme } from "@/controllers/context/ThemeContext";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { 
   Users, 
   Calendar, 
@@ -11,11 +11,47 @@ import {
   HardDrive, 
   Mail,
   ArrowRight,
-  Shield
+  Shield,
+  TrendingUp,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
+import { bookingService } from '@/controllers/services/bookingService';
+import { userService } from '@/controllers/services/userService';
+import { serviceService } from '@/controllers/services/serviceService';
 
 const AdminDashboard = () => {
   const { palette: p, mode } = useTheme();
+  const navigate = useNavigate();
+  const [statsData, setStatsData] = useState<any>(null);
+  const [userCount, setUserCount] = useState(0);
+  const [serviceCount, setServiceCount] = useState(0);
+  const [recentBookings, setRecentBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const [bookingStats, users, services, allBookings] = await Promise.all([
+        bookingService.getStats(),
+        userService.getAll(),
+        serviceService.getAll(),
+        bookingService.getAll()
+      ]);
+      setStatsData(bookingStats.stats);
+      setUserCount(users.users.length);
+      setServiceCount(services.services.length);
+      setRecentBookings(allBookings.bookings.slice(0, 5));
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const cardStyle = {
     background: p.cardBg,
@@ -26,28 +62,23 @@ const AdminDashboard = () => {
   };
 
   const stats = [
-    { label: "Total Users", value: "1,284", icon: Users, change: "+12%", color: "#4f46e5" },
-    { label: "Active Bookings", value: "156", icon: Calendar, change: "+5%", color: "#0ea5e9" },
-    { label: "Revenue", value: "DZD 450k", icon: DollarSign, change: "+18%", color: "#10b981" },
-    { label: "Pending Reports", value: "5", icon: AlertCircle, change: "-2", color: "#f43f5e" },
+    { label: "Total Users", value: userCount, icon: Users, change: "+12%", color: "#4f46e5", positive: true },
+    { label: "Active Bookings", value: statsData?.confirmed || 0, icon: Calendar, change: "+5%", color: "#0ea5e9", positive: true },
+    { label: "Total Services", value: serviceCount, icon: Sparkles, change: "0%", color: "#10b981", positive: true },
+    { label: "Pending Requests", value: statsData?.pending || 0, icon: AlertCircle, change: "-2", color: "#f43f5e", positive: false },
   ];
 
-  const recentBookings = [
-    { id: "BK-7281", user: "Sarah Johnson", service: "Elderly Care", status: "Completed", amount: "DZD 4,500" },
-    { id: "BK-7282", user: "Michael Chen", service: "Baby Sitting", status: "In Progress", amount: "DZD 3,200" },
-    { id: "BK-7283", user: "Amine Rahmani", service: "Home Cleaning", status: "Pending", amount: "DZD 2,800" },
-    { id: "BK-7284", user: "Lydia Mansouri", service: "Specialized Care", status: "Cancelled", amount: "DZD 0" },
-  ];
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Completed': return '#10b981';
-      case 'In Progress': return '#3b82f6';
-      case 'Pending': return '#f59e0b';
-      case 'Cancelled': return '#ef4444';
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'confirmed': return '#10b981';
+      case 'pending': return '#f59e0b';
+      case 'completed': return p.primary;
+      case 'cancelled': return '#f43f5e';
       default: return p.textMuted;
     }
   };
+
+  if (loading) return <div style={{ color: p.textMuted, textAlign: 'center', padding: 100 }}>Loading dashboard...</div>;
 
   return (
     <div style={{ animation: "fadeUp .4s ease both" }}>
@@ -67,21 +98,21 @@ const AdminDashboard = () => {
           Dashboard Overview
         </h1>
         <p style={{ fontSize: 14, color: p.textMuted }}>
-          Welcome to the Family Care administration panel. Platform-wide operations are running smoothly.
+          Welcome back, Admin. Here's what's happening on Family Care today.
         </p>
       </div>
 
       {/* STATS GRID */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20, marginBottom: 32 }}>
         {stats.map((stat, i) => {
-          const Icon = stat.icon;
+          const Icon: any = stat.icon;
           return (
             <div key={i} className="hover-card" style={cardStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
                 <div style={{ width: 48, height: 48, borderRadius: 12, background: `${stat.color}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: stat.color }}>
                   <Icon size={24} />
                 </div>
-                <span style={{ fontSize: 12, fontWeight: 600, color: stat.change.startsWith('+') ? '#10b981' : '#f43f5e', background: stat.change.startsWith('+') ? '#10b98115' : '#f43f5e15', padding: '4px 8px', borderRadius: 6 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: stat.positive ? '#10b981' : '#f43f5e', background: stat.positive ? '#10b98115' : '#f43f5e15', padding: '4px 8px', borderRadius: 6 }}>
                   {stat.change}
                 </span>
               </div>
@@ -105,25 +136,23 @@ const AdminDashboard = () => {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ borderBottom: `1px solid ${p.border}` }}>
-                  <th style={{ padding: '12px 8px', fontSize: 12, color: p.textMuted, fontWeight: 500, textTransform: 'uppercase' }}>ID</th>
-                  <th style={{ padding: '12px 8px', fontSize: 12, color: p.textMuted, fontWeight: 500, textTransform: 'uppercase' }}>Customer</th>
-                  <th style={{ padding: '12px 8px', fontSize: 12, color: p.textMuted, fontWeight: 500, textTransform: 'uppercase' }}>Service</th>
+                  <th style={{ padding: '12px 8px', fontSize: 12, color: p.textMuted, fontWeight: 500, textTransform: 'uppercase' }}>Client</th>
+                  <th style={{ padding: '12px 8px', fontSize: 12, color: p.textMuted, fontWeight: 500, textTransform: 'uppercase' }}>Provider</th>
+                  <th style={{ padding: '12px 8px', fontSize: 12, color: p.textMuted, fontWeight: 500, textTransform: 'uppercase' }}>Date</th>
                   <th style={{ padding: '12px 8px', fontSize: 12, color: p.textMuted, fontWeight: 500, textTransform: 'uppercase' }}>Status</th>
-                  <th style={{ padding: '12px 8px', fontSize: 12, color: p.textMuted, fontWeight: 500, textTransform: 'uppercase' }}>Amount</th>
                 </tr>
               </thead>
               <tbody>
                 {recentBookings.map((bk) => (
-                  <tr key={bk.id} className="table-row" style={{ borderBottom: `1px solid ${p.border}` }}>
-                    <td style={{ padding: '16px 8px', fontSize: 13, color: p.text, fontWeight: 500 }}>{bk.id}</td>
-                    <td style={{ padding: '16px 8px', fontSize: 13, color: p.text }}>{bk.user}</td>
-                    <td style={{ padding: '16px 8px', fontSize: 13, color: p.textMuted }}>{bk.service}</td>
+                  <tr key={bk.id_b} className="table-row" style={{ borderBottom: `1px solid ${p.border}`, cursor: 'pointer' }} onClick={() => navigate(`/admin/bookings/${bk.id_b}`)}>
+                    <td style={{ padding: '16px 8px', fontSize: 13, color: p.text, fontWeight: 500 }}>{bk.client_name}</td>
+                    <td style={{ padding: '16px 8px', fontSize: 13, color: p.text }}>{bk.provider_name}</td>
+                    <td style={{ padding: '16px 8px', fontSize: 13, color: p.textMuted }}>{new Date(bk.date).toLocaleDateString()}</td>
                     <td style={{ padding: '16px 8px' }}>
                       <span style={{ fontSize: 11, fontWeight: 600, color: getStatusColor(bk.status), background: `${getStatusColor(bk.status)}15`, padding: '4px 10px', borderRadius: 20 }}>
-                        {bk.status}
+                        {bk.status.toUpperCase()}
                       </span>
                     </td>
-                    <td style={{ padding: '16px 8px', fontSize: 13, color: p.text, fontWeight: 600 }}>{bk.amount}</td>
                   </tr>
                 ))}
               </tbody>
@@ -143,9 +172,9 @@ const AdminDashboard = () => {
                 { label: "API Server", status: "Operational", color: "#10b981", icon: Activity },
                 { label: "Database", status: "Operational", color: "#10b981", icon: Database },
                 { label: "Storage", status: "Operational", color: "#10b981", icon: HardDrive },
-                { label: "Emails", status: "Degraded", color: "#f59e0b", icon: Mail },
+                { label: "Emails", status: "Operational", color: "#10b981", icon: Mail },
               ].map((sys, i) => {
-                const SysIcon = sys.icon;
+                const SysIcon: any = sys.icon;
                 return (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -178,16 +207,14 @@ const AdminDashboard = () => {
   );
 };
 
+const Sparkles = ({ size }: { size: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="m12 3 1.912 4.913L18.825 9.825 13.913 11.737 12 16.65l-1.913-4.913L5.175 9.825l4.912-1.912L12 3Z"/>
+    <path d="M5 3v4"/>
+    <path d="M19 17v4"/>
+    <path d="M3 5h4"/>
+    <path d="M17 19h4"/>
+  </svg>
+);
+
 export default AdminDashboard;
-
-
-
-
-
-
-
-
-
-
-
-

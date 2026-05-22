@@ -101,7 +101,7 @@ export const getProviderById = async (req: Request, res: Response): Promise<void
   const { id } = req.params;
 
   try {
-    const sql = `
+    const providerSql = `
       SELECT
         u.id as user_id,
         (u.fname || ' ' || u.lname) as name,
@@ -126,18 +126,39 @@ export const getProviderById = async (req: Request, res: Response): Promise<void
       GROUP BY u.id, sp.idu_sp
     `;
 
-    const result = await query(sql, [id]);
+    const providerRes = await query(providerSql, [id]);
 
-    if (result.rows.length === 0) {
+    if (providerRes.rows.length === 0) {
       res.status(404).json({ success: false, message: 'Provider not found' });
       return;
     }
 
+    const provider = providerRes.rows[0];
+
+    // Fetch reviews
+    const reviewsSql = `
+      SELECT f.*, (u.fname || ' ' || u.lname) as user_name
+      FROM feedback f
+      JOIN "user" u ON f.idu_cl = u.id
+      WHERE f.idu_sp = $1
+      ORDER BY f.created_at DESC
+    `;
+    const reviewsRes = await query(reviewsSql, [id]);
+    provider.reviews = reviewsRes.rows;
+
+    // Fetch documents
+    const docsSql = `
+      SELECT * FROM document WHERE id_user = $1 OR idu_sp = $1
+    `;
+    const docsRes = await query(docsSql, [id]);
+    provider.documents = docsRes.rows;
+
     res.json({
       success: true,
-      provider: result.rows[0]
+      provider
     });
   } catch (error: any) {
+    console.error('Get provider by id error:', error);
     res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
   }
 };
@@ -180,12 +201,11 @@ export const getProviderDashboard = async (req: AuthRequest, res: Response): Pro
     `, [providerId]);
 
     const statsRes = await query(`
-      SELECT
+      SELECT 
         COUNT(*) as total_jobs,
-        COALESCE(SUM(p.amount), 0) as total_earnings
-      FROM booking b
-      LEFT JOIN payment p ON b.service_id = p.id_s
-      WHERE b.idu_sp = $1 AND b.status = 'completed'
+        (SELECT COALESCE(SUM(amount), 0) FROM payment WHERE idu_sp = $1 AND status = 'paid') as total_earnings
+      FROM booking 
+      WHERE idu_sp = $1 AND status = 'completed'
     `, [providerId]);
 
     res.json({
@@ -195,7 +215,7 @@ export const getProviderDashboard = async (req: AuthRequest, res: Response): Pro
         pendingRequestsCount: pendingRequestsRes.rows.length,
         totalEarnings: statsRes.rows[0].total_earnings || 0,
         rating: provider.rating,
-        reviewCount: provider.review_count
+        review_count: provider.review_count
       },
       todaysJobs: todayJobsRes.rows,
       pendingRequests: pendingRequestsRes.rows
@@ -315,11 +335,9 @@ export const getProviderEarnings = async (req: AuthRequest, res: Response): Prom
         p.created_at as date,
         p.status
       FROM payment p
-      JOIN service s ON p.id_s = s.id_s
-      JOIN booking b ON b.service_id = s.id_s
-      JOIN client c ON b.idu_cl = c.idu_cl
-      JOIN "user" u ON c.idu_cl = u.id
-      WHERE b.idu_sp = $1
+      LEFT JOIN service s ON p.id_s = s.id_s
+      LEFT JOIN "user" u ON p.idu_cl = u.id
+      WHERE p.idu_sp = $1
       ORDER BY p.created_at DESC
     `, [providerId]);
 
@@ -328,14 +346,12 @@ export const getProviderEarnings = async (req: AuthRequest, res: Response): Prom
 
     const statsRes = await query(`
       SELECT
-        SUM(amount) as total_revenue,
-        SUM(amount) FILTER (WHERE created_at >= $2) as month_revenue,
-        SUM(amount) FILTER (WHERE status = 'unpaid') as pending_payout,
-        COUNT(*) FILTER (WHERE created_at >= $2 AND status = 'paid') as month_jobs
-      FROM payment p
-      JOIN service s ON p.id_s = s.id_s
-      JOIN booking b ON b.service_id = s.id_s
-      WHERE b.idu_sp = $1
+        COALESCE(SUM(amount), 0) as total_revenue,
+        COALESCE(SUM(amount) FILTER (WHERE created_at >= $2), 0) as month_revenue,
+        COALESCE(SUM(amount) FILTER (WHERE status = 'unpaid'), 0) as pending_payout,
+        COUNT(DISTINCT id_b) FILTER (WHERE created_at >= $2 AND status = 'paid') as month_jobs
+      FROM payment
+      WHERE idu_sp = $1
     `, [providerId, firstDayOfMonth]);
 
     const stats = statsRes.rows[0];
@@ -389,11 +405,12 @@ export const updateProviderProfile = async (req: AuthRequest, res: Response): Pr
  */
 export const getMyProviderProfile = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.userId;
+  console.log(`[getMyProviderProfile] Fetching profile for user ID: ${userId}`);
 
   try {
     const sql = `
       SELECT
-        (u.fname || ' ' || u.lname) as name, u.email, u.phone_number, u.address,
+        (COALESCE(u.fname, '') || ' ' || COALESCE(u.lname, '')) as name, u.email, u.phone_number, u.address,
         sp.bio, sp.years_of_exp, sp.price_per_hour, sp.rating, sp.review_count
       FROM "user" u
       JOIN service_provider sp ON u.id = sp.idu_sp
@@ -402,12 +419,60 @@ export const getMyProviderProfile = async (req: AuthRequest, res: Response): Pro
     const result = await query(sql, [userId]);
 
     if (result.rows.length === 0) {
+      console.log(`[getMyProviderProfile] Profile not found for user ID: ${userId}`);
       res.status(404).json({ success: false, message: 'Provider profile not found' });
       return;
     }
 
+    console.log(`[getMyProviderProfile] Profile found for user ID: ${userId}`);
     res.json({ success: true, profile: result.rows[0] });
   } catch (error: any) {
+    console.error('[getMyProviderProfile] Error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
+  }
+};
+
+/**
+ * Get provider's verification documents
+ */
+export const getMyDocuments = async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.userId;
+  try {
+    const result = await query(
+      'SELECT * FROM document WHERE id_user = $1 OR idu_sp = $1 ORDER BY id_doc DESC',
+      [userId]
+    );
+    res.json({ success: true, documents: result.rows });
+  } catch (error: any) {
+    console.error('Get provider documents error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
+
+/**
+ * Upload a new verification document
+ */
+export const uploadDocument = async (req: AuthRequest, res: Response): Promise<void> => {
+  const userId = req.userId;
+  const { name, type, link } = req.body;
+
+  try {
+    // Check if the user is a provider or pending provider
+    const userCheck = await query('SELECT id FROM "user" WHERE id = $1', [userId]);
+    if (userCheck.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+
+    const result = await query(
+      'INSERT INTO document (id_user, name, type, link, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [userId, name, type, link || 'https://via.placeholder.com/150', 'pending']
+    );
+
+    res.json({ success: true, message: 'Document uploaded successfully', document: result.rows[0] });
+  } catch (error: any) {
+    console.error('Upload document error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+

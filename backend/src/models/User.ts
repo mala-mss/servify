@@ -2,37 +2,34 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface UserAttributes {
-  id: number;
+  IdU: number;
   fname: string;
   lname: string;
   address?: string;
   phone_number?: string;
   profile_picture?: string;
   email: string;
-  created_at: Date;
-  updated_at: Date;
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'address' | 'phone_number' | 'profile_picture' | 'created_at' | 'updated_at'> {}
+interface UserCreationAttributes extends Optional<UserAttributes, 'IdU' | 'address' | 'phone_number' | 'profile_picture'> {}
 
 export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
-  public id!: number;
+  public IdU!: number;
   public fname!: string;
   public lname!: string;
   public address?: string;
   public phone_number?: string;
   public profile_picture?: string;
   public email!: string;
-  public readonly created_at!: Date;
-  public readonly updated_at!: Date;
 }
 
 User.init(
   {
-    id: {
+    IdU: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+      field: 'IdU',
     },
     fname: {
       type: DataTypes.STRING(100),
@@ -60,14 +57,6 @@ User.init(
         key: 'email',
       },
     },
-    created_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
-    updated_at: {
-      type: DataTypes.DATE,
-      defaultValue: DataTypes.NOW,
-    },
   },
   {
     sequelize,
@@ -75,3 +64,5 @@ User.init(
     timestamps: false,
   }
 );
+
+export default User;

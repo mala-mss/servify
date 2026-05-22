@@ -1,5 +1,15 @@
 import api from './api';
-import { ServiceProvider, Service, ProviderAvailability } from '../models';
+import type { ServiceProvider, Service, ProviderAvailability } from '../../models';
+
+export interface Document {
+  id_doc: number;
+  name: string;
+  link: string;
+  type: string;
+  status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string;
+  created_at?: string;
+}
 
 export interface ProviderSearchFilters {
   service_id?: string;
@@ -110,7 +120,24 @@ export const providerService = {
     });
     return response.data;
   },
+
+  /**
+   * Get provider's verification documents
+   */
+  getDocuments: async (): Promise<{ documents: Document[] }> => {
+    const response = await api.get<{ documents: Document[] }>('/providers/documents');
+    return response.data;
+  },
+
+  /**
+   * Upload a new verification document
+   */
+  uploadDocument: async (data: { name: string; type: string; link?: string }): Promise<{ success: boolean; document: Document }> => {
+    const response = await api.post<{ success: boolean; document: Document }>('/providers/documents', data);
+    return response.data;
+  },
 };
+
 
 
 

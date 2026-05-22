@@ -6,7 +6,10 @@ import {
   updateService,
   deleteService,
   getCategories,
-  getMyServices
+  getMyServices,
+  createCategory,
+  updateCategory,
+  deleteCategory
 } from '../controllers/service.controller';
 import { authenticate, authorize } from '../middleware/auth';
 import { validate } from '../middleware/validation';
@@ -17,6 +20,9 @@ const router = Router();
 
 router.get('/', asyncHandler(getAllServices));
 router.get('/categories', asyncHandler(getCategories));
+router.post('/categories', authenticate, authorize('admin'), asyncHandler(createCategory));
+router.put('/categories/:id', authenticate, authorize('admin'), asyncHandler(updateCategory));
+router.delete('/categories/:id', authenticate, authorize('admin'), asyncHandler(deleteCategory));
 router.get('/providers/my-services', authenticate, authorize('provider'), asyncHandler(getMyServices)); // For providers to get their services
 router.get('/:id', asyncHandler(getServiceById));
 

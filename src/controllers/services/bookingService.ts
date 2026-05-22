@@ -1,5 +1,5 @@
 import api from './api';
-import { Booking, BookingRequest } from '../models';
+import type { Booking, BookingRequest } from '../../models';
 
 export interface CreateBookingRequest {
   service_provider_id: string;

@@ -9,7 +9,7 @@ import { MessageSquare } from "lucide-react";
 type JobStatus = "confirmed" | "pending" | "in_progress" | "completed" | "cancelled" | "declined";
 
 interface Job {
-  id_booking: number;
+  id_b: number;
   idu_cl: number;
   client_name: string;
   service_name: string;
@@ -18,6 +18,8 @@ interface Job {
   status: JobStatus;
   amount: number;
   address: string;
+  first_payment_done: boolean;
+  second_payment_done: boolean;
 }
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; label: string }> = {
@@ -62,6 +64,10 @@ export default function MyJobs() {
     }
   };
 
+  const handleViewDetails = (id: number) => {
+    navigate(`/provider/jobs/${id}`);
+  };
+
   const handleMessageClient = async (idu_cl: number) => {
     try {
       const conv = await startConversation(idu_cl);
@@ -76,6 +82,7 @@ export default function MyJobs() {
     try {
       await axiosInstance.post(`/bookings/${id}/payment/first-half`);
       alert("First half payment request sent to client");
+      fetchJobs();
     } catch (error: any) {
       console.error("Failed to request first half payment:", error);
       alert(error.response?.data?.message || "Failed to send payment request");
@@ -86,6 +93,7 @@ export default function MyJobs() {
     try {
       await axiosInstance.post(`/bookings/${id}/payment/second-half`);
       alert("Second half payment request sent to client");
+      fetchJobs();
     } catch (error: any) {
       console.error("Failed to request second half payment:", error);
       alert(error.response?.data?.message || "Failed to send payment request");
@@ -131,7 +139,7 @@ export default function MyJobs() {
             const status = STATUS_CONFIG[job.status] || STATUS_CONFIG.pending;
             return (
               <div 
-                key={job.id_booking} 
+                key={job.id_b} 
                 style={compactCardStyle}
                 onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(47,176,188,.3)")}
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = p.border)}
@@ -180,29 +188,36 @@ export default function MyJobs() {
                       </button>
                       {job.status === 'confirmed' && (
                           <button
-                              onClick={() => updateStatus(job.id_booking, 'in_progress')}
+                              onClick={() => updateStatus(job.id_b, 'in_progress')}
                               style={{ fontSize: "12px", color: "#fff", background: p.primary, border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
                           >Start Job</button>
                       )}
-                      {job.status === 'in_progress' && (
+                      
+                      {/* Dynamic Payment Buttons */}
+                      {job.status === 'in_progress' && !job.first_payment_done && (
                           <button
-                              onClick={() => requestFirstHalfPayment(job.id_booking)}
+                              onClick={() => requestFirstHalfPayment(job.id_b)}
                               style={{ fontSize: "12px", color: "#fff", background: "#fb923c", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
                           >Request 1st Payment</button>
                       )}
-                      {job.status === 'in_progress' && (
+                      
+                      {(job.status === 'in_progress' || job.status === 'completed') && job.first_payment_done && !job.second_payment_done && (
                           <button
-                              onClick={() => updateStatus(job.id_booking, 'completed')}
-                              style={{ fontSize: "12px", color: "#fff", background: "#4ade80", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
-                          >Mark Completed</button>
-                      )}
-                      {job.status === 'completed' && (
-                          <button
-                              onClick={() => requestSecondHalfPayment(job.id_booking)}
+                              onClick={() => requestSecondHalfPayment(job.id_b)}
                               style={{ fontSize: "12px", color: "#fff", background: "#fb923c", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
                           >Request 2nd Payment</button>
                       )}
-                      <button style={{
+
+                      {job.status === 'in_progress' && (
+                          <button
+                              onClick={() => updateStatus(job.id_b, 'completed')}
+                              style={{ fontSize: "12px", color: "#fff", background: "#4ade80", border: "none", borderRadius: 6, padding: "6px 12px", cursor: "pointer" }}
+                          >Mark Completed</button>
+                      )}
+                      
+                      <button 
+                        onClick={() => handleViewDetails(job.id_b)}
+                        style={{
                           fontSize: "12px",
                           color: p.textMuted,
                           background: "transparent",
@@ -224,15 +239,3 @@ export default function MyJobs() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-

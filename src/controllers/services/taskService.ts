@@ -1,5 +1,5 @@
 import api from './api';
-import { Task } from '../models';
+import type { Task } from '../../models';
 
 export interface CreateTaskRequest {
   service_provider_id: string;

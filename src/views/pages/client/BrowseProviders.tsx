@@ -32,6 +32,7 @@ export default function BrowseProviders() {
   const time = searchParams.get("time");
   const address = searchParams.get("address");
   const notes = searchParams.get("notes");
+  const dependantId = searchParams.get("dependantId");
 
   const [search, setSearch] = useState("");
   const [providers, setProviders] = useState([]);
@@ -80,6 +81,7 @@ export default function BrowseProviders() {
             time, 
             address, 
             notes,
+            dependantId,
             price: provider.price
         } 
     });
@@ -157,6 +159,7 @@ export default function BrowseProviders() {
                                   time, 
                                   address, 
                                   notes, 
+                                  dependantId,
                                   price: provider.price,
                                   providerId: provider.id,
                                   providerName: provider.name

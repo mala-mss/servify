@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { query } from '../db';
+import { createNotificationInternal } from './notification.controller';
 
 // ── GET /payments  (admin only) ───────────────────────────────
 export const getAllTransactions = async (req: AuthRequest, res: Response): Promise<void> => {
@@ -73,9 +74,9 @@ export const getTransactionById = async (req: AuthRequest, res: Response): Promi
   }
 };
 
-// ── POST /payments  (admin only) ──────────────────────────────
+// ── POST /payments ──────────────────────────────────────────
 export const createTransaction = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { id_s, amount, payment_method, status } = req.body;
+  const { id_s, amount, payment_method, status, bookingId, stage } = req.body;
 
   if (!amount) {
     res.status(400).json({ message: 'amount is required' });
@@ -83,14 +84,54 @@ export const createTransaction = async (req: AuthRequest, res: Response): Promis
   }
 
   try {
+    let bookingData: any = null;
+    if (bookingId) {
+      const bookingResult = await query(
+        `SELECT b.*, s.name as service_name 
+         FROM booking b 
+         LEFT JOIN service s ON s.id_s = b.service_id 
+         WHERE b.id_b = $1`, 
+        [bookingId]
+      );
+      if (bookingResult.rows.length > 0) {
+        bookingData = bookingResult.rows[0];
+      }
+    }
+
     const result = await query(
-      `INSERT INTO payment (id_s, amount, payment_method, status)
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO payment (id_s, amount, payment_method, status, id_b, idu_cl, idu_sp, stage)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [id_s ?? null, amount, payment_method ?? null, status ?? 'unpaid']
+      [
+        id_s ?? (bookingData?.service_id) ?? null, 
+        amount, 
+        payment_method ?? null, 
+        status ?? 'unpaid',
+        bookingId ?? null,
+        bookingData?.idu_cl ?? null,
+        bookingData?.idu_sp ?? null,
+        stage === 'second' ? 2 : 1
+      ]
     );
 
-    res.status(201).json({ message: 'Payment created successfully', payment: result.rows[0] });
+    const payment = result.rows[0];
+
+    // If this payment was for the first half, notify client about second half
+    if (bookingId && (stage !== 'second')) {
+      if (bookingData) {
+        const serviceName = bookingData.service_name || 'your service';
+        
+        await createNotificationInternal(
+          bookingData.idu_cl,
+          'Second Half Payment Due',
+          `The first half of your payment for ${serviceName} has been processed. You will be notified when to pay the remaining half.`,
+          'payment',
+          `/client/checkout?bookingId=${bookingId}&stage=second`
+        );
+      }
+    }
+
+    res.status(201).json({ message: 'Payment created successfully', payment });
   } catch (error: any) {
     console.error('Create transaction error:', error);
     res.status(500).json({ message: 'Internal server error' });

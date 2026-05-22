@@ -55,6 +55,7 @@ import ManageBookings from '@/views/pages/admin/ManageBookings';
 import AdminBookingDetail from '@/views/pages/admin/BookingDetail';
 import ManageServices from '@/views/pages/admin/ManageServices';
 import ManageCategories from '@/views/pages/admin/ManageCategories';
+import Approvals from '@/views/pages/admin/Approvals';
 import Reports from '@/views/pages/admin/Reports';
 import ReportDetail from '@/views/pages/admin/ReportDetail';
 import Analytics from '@/views/pages/admin/Analytics';
@@ -115,7 +116,7 @@ const AppRouter: React.FC = () => {
       </Route>
 
       {/* Protected Client Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['client']} />}>
+      <Route element={<ProtectedRoute allowedRoles={['client', 'admin']} />}>
         <Route element={<ClientLayout />}>
           <Route path="/client/home" element={<Home />} />
           <Route path="/client/browse" element={<BrowseServices />} />
@@ -139,7 +140,7 @@ const AppRouter: React.FC = () => {
       </Route>
 
       {/* Common Chat Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['client', 'provider']} />}>
+      <Route element={<ProtectedRoute allowedRoles={['client', 'provider', 'admin']} />}>
         <Route element={user?.role === 'provider' ? <ProviderLayout /> : <ClientLayout />}>
           <Route path="/chat/inbox" element={<ChatInbox />} />
           <Route path="/chat/:id" element={<ChatPage />} />
@@ -147,7 +148,7 @@ const AppRouter: React.FC = () => {
       </Route>
 
       {/* Protected Provider Routes */}
-      <Route element={<ProtectedRoute allowedRoles={['provider']} />}>
+      <Route element={<ProtectedRoute allowedRoles={['provider', 'admin']} />}>
         <Route element={<ProviderLayout />}>
           <Route path="/provider/dashboard" element={<ProviderDashboard />} />
           <Route path="/provider/incoming-requests" element={<IncomingRequests />} />
@@ -165,20 +166,23 @@ const AppRouter: React.FC = () => {
           <Route path="/profile/client/:id" element={<ClientProfileDetail />} />
         </Route>
       </Route>
-    {/* Admin Routes - No Auth Required */}
-      <Route element={<AdminLayout />}>
-  <Route path="/admin/dashboard" element={<AdminDashboard />} />
-  <Route path="/admin/users" element={<ManageUsers />} />
-  <Route path="/admin/users/:id" element={<UserDetail />} />
-  <Route path="/admin/bookings" element={<ManageBookings />} />
-  <Route path="/admin/bookings/:id" element={<AdminBookingDetail />} />
-  <Route path="/admin/services" element={<ManageServices />} />
-  <Route path="/admin/categories" element={<ManageCategories />} />
-  <Route path="/admin/reports" element={<Reports />} />
-  <Route path="/admin/reports/:id" element={<ReportDetail />} />
-  <Route path="/admin/analytics" element={<Analytics />} />
-  <Route path="/admin/settings" element={<Settings />} />
-</Route>
+      {/* Protected Admin Routes */}
+      <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
+        <Route element={<AdminLayout />}>
+          <Route path="/admin/dashboard" element={<AdminDashboard />} />
+          <Route path="/admin/users" element={<ManageUsers />} />
+          <Route path="/admin/users/:id" element={<UserDetail />} />
+          <Route path="/admin/bookings" element={<ManageBookings />} />
+          <Route path="/admin/bookings/:id" element={<AdminBookingDetail />} />
+          <Route path="/admin/services" element={<ManageServices />} />
+          <Route path="/admin/categories" element={<ManageCategories />} />
+          <Route path="/admin/approvals" element={<Approvals />} />
+          <Route path="/admin/reports" element={<Reports />} />
+          <Route path="/admin/reports/:id" element={<ReportDetail />} />
+          <Route path="/admin/analytics" element={<Analytics />} />
+          <Route path="/admin/settings" element={<Settings />} />
+        </Route>
+      </Route>
 
       {/* Root & Fallback */}
       <Route path="/" element={user ? <RoleRedirect /> : <Login />} />
@@ -189,11 +193,3 @@ const AppRouter: React.FC = () => {
 };
 
 export default AppRouter;
-
-
-
-
-
-
-
-

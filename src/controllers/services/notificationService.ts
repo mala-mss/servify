@@ -1,5 +1,5 @@
 import api from './api';
-import { Notification } from '../models';
+import type { Notification } from '../../models';
 
 export const notificationService = {
   /**

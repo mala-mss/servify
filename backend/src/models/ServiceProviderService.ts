@@ -16,6 +16,7 @@ ServiceProviderService.init(
     idU_SP: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      field: 'idU_SP',
       references: {
         model: 'service_provider',
         key: 'idU_SP',
@@ -24,6 +25,7 @@ ServiceProviderService.init(
     id_S: {
       type: DataTypes.INTEGER,
       primaryKey: true,
+      field: 'id_S',
       references: {
         model: 'service',
         key: 'id_S',

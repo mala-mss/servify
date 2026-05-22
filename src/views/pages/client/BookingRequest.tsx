@@ -1,8 +1,9 @@
 // src/pages/client/BookingRequest.jsx
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTheme } from "@/controllers/context/ThemeContext";
+import axiosInstance from "@/controllers/api/axiosInstance";
 
 export default function BookingRequest() {
   const [searchParams] = useSearchParams();
@@ -14,14 +15,33 @@ export default function BookingRequest() {
     date: "",
     time: "",
     notes: "",
-    address: ""
+    address: "",
+    dependantId: ""
   });
+  const [dependants, setDependants] = useState<Array<{ id_dep: string; name: string; relationship: string }>>([]);
+  const [loading, setLoading] = useState(true);
 
   const { mode: theme, palette: p } = useTheme();
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    const fetchDependants = async () => {
+      try {
+        const response = await axiosInstance.get("/client/dependants");
+        if (response.data.success) {
+          setDependants(response.data.dependants);
+        }
+      } catch (error) {
+        console.error("Failed to fetch dependants:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDependants();
+  }, []);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    navigate(`/client/browse-providers?serviceId=${serviceId}&date=${formData.date}&time=${formData.time}&address=${encodeURIComponent(formData.address)}&notes=${encodeURIComponent(formData.notes)}&serviceName=${encodeURIComponent(serviceName || '')}`);
+    navigate(`/client/browse-providers?serviceId=${serviceId}&date=${formData.date}&time=${formData.time}&address=${encodeURIComponent(formData.address)}&notes=${encodeURIComponent(formData.notes)}&serviceName=${encodeURIComponent(serviceName || '')}&dependantId=${formData.dependantId}`);
   };
 
   return (
@@ -39,6 +59,21 @@ export default function BookingRequest() {
           </p>
 
           <form onSubmit={handleSubmit} style={styles.form}>
+            <div style={styles.formGroup}>
+              <label style={{ ...styles.label, color: p.text }}>Who is the service for?</label>
+              <select 
+                required
+                style={{ ...styles.input, background: theme === 'dark' ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)", borderColor: p.border, color: p.text }}
+                value={formData.dependantId}
+                onChange={(e) => setFormData({ ...formData, dependantId: e.target.value })}
+              >
+                <option value="">Select a dependant</option>
+                {dependants.map((dep) => (
+                  <option key={dep.id_dep} value={dep.id_dep}>{dep.name} ({dep.relationship})</option>
+                ))}
+              </select>
+            </div>
+
             <div style={styles.formGroup}>
               <label style={{ ...styles.label, color: p.text }}>When do you need the service?</label>
               <div style={styles.inputRow}>
@@ -98,15 +133,15 @@ export default function BookingRequest() {
   );
 }
 
-const styles = {
+const styles: { [key: string]: React.CSSProperties } = {
   root: { minHeight: "100vh", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: 24 },
   container: { width: "100%", maxWidth: 600 },
   card: { padding: 48, borderRadius: 32, border: "1px solid" },
   stepIndicator: { fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 },
   title: { fontSize: 32, fontWeight: 600, marginBottom: 8 },
   subtitle: { fontSize: 16, marginBottom: 40 },
-  form: { display: "flex", flexDirection: "column", gap: 24 },
-  formGroup: { display: "flex", flexDirection: "column", gap: 8 },
+  form: { display: "flex", flexDirection: "column" as React.CSSProperties["flexDirection"], gap: 24 },
+  formGroup: { display: "flex", flexDirection: "column" as React.CSSProperties["flexDirection"], gap: 8 },
   label: { fontSize: 14, fontWeight: 500 },
   inputRow: { display: "flex", gap: 12 },
   input: { padding: "16px", borderRadius: 12, border: "1px solid", fontSize: 15, outline: "none", transition: "border-color 0.2s" },

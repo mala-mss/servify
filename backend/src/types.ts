@@ -1,38 +1,33 @@
-// ============================================================
-// backend/src/types.ts — mirrors family_care PostgreSQL schema
-// ============================================================
 
 export interface User {
-  id: number;
+  IdU: number;
   fname: string;
   lname: string;
   address?: string;
   phone_number?: string;
   profile_picture?: string;
   email: string;
-  created_at?: Date;
-  updated_at?: Date;
 }
 
 export interface Account {
   email: string;
   password: string;
-  status?: string;       // default: 'active'
-  nbr_warning?: number;  // default: 0
+  status?: string;
+  nbr_warning?: number;
   created_at?: Date;
   updated_at?: Date;
 }
 
 export interface Admin {
-  idu_a: number;
+  idU_A: number;
 }
 
 export interface Client {
-  idu_cl: number;
+  idU_CL: number;
 }
 
 export interface ServiceProvider {
-  idu_sp: number;
+  idU_SP: number;
   bio?: string;
   years_of_exp?: number;
   work_outside_city?: boolean;
@@ -45,93 +40,26 @@ export interface ServiceProvider {
   end_time?: string;
 }
 
-export interface ServiceCategory {
-  id_c: number;
-  name: string;
-  target_demographics?: string;
-  policies?: string;
-  icon?: string;
+export interface InscriptionRequest {
+  id_R: number;
+  status?: string;
+  submitted_at?: Date;
+  idU_A?: number;
 }
 
-export interface Service {
-  id_s: number;
-  name: string;
-  description?: string;
-  base_price?: number;
-  id_c?: number;
-}
-
-export interface Providing {
-  idu_sp: number;
-  id_s: number;
-}
-
-export interface BookingRequest {
-  id_r: number;
-  idu_cl: number;
-  idu_sp: number;
-  date: string;
-  time: string;
-  duration?: string;
-  status?: string;       // default: 'pending'
-  service_id?: number;
-}
-
-export interface Booking {
-  id_b: number;
-  idu_cl: number;
-  idu_sp: number;
-  date: string;
-  time: string;
-  address?: string;
-  status?: string;       // default: 'confirmed'
-}
-
-export interface Task {
-  idt: number;
-  idu_cl: number;
-  idu_sp: number;
-  name?: string;
-  start_time?: string;
-  end_time?: string;
-  duration?: string;
-  status?: string;       // default: 'not_started'
-}
-
-export interface Payment {
-  id_p: number;
-  id_s?: number;
-  amount: number;
-  currency?: string;     // default: 'DZD'
-  status?: string;       // default: 'unpaid'
-  payment_method?: string;
-  created_at?: Date;
-}
-
-export interface Document {
-  id_doc: number;
-  name?: string;
+export interface DocCv {
+  id: number;
+  type?: string;
   link?: string;
-  type?: string;
-  width?: number;
-  idu_sp?: number;
-  idu_cl?: number;
+  id_R?: number;
+  idU_SP?: number;
 }
 
-export interface Specification {
-  id_spec: number;
-  url?: string;
-  description?: string;
-  id_doc?: number;
-}
-
-export interface File {
-  idf: number;
-  url?: string;
-  type?: string;
-  idt?: number;
-  idu_cl?: number;
-  idu_sp?: number;
+export interface AuthorizedPerson {
+  idU_AP: number;
+  name?: string;
+  relationship?: string;
+  idU_CL?: number;
 }
 
 export interface Dependant {
@@ -139,52 +67,124 @@ export interface Dependant {
   name?: string;
   date_of_birth?: string;
   relationship?: string;
-  id_u_cl?: number;
+  idU_CL?: number;
 }
 
-export interface DependantFile {
-  id_dep: number;
+export interface ServiceCategory {
+  id_C: number;
+  name: string;
+  target_demographics?: string;
+  policies?: string;
+  icon?: string;
+}
+
+export interface Service {
+  id_S: number;
+  name: string;
+  description?: string;
+  base_price?: number;
+  id_C?: number;
+}
+
+export interface Providing {
+  idU_SP: number;
+  id_S: number;
+}
+
+export interface DocumentRequest {
+  id_DOC: number;
+  name?: string;
   link?: string;
   type?: string;
+  description?: string;
+  idU_CL?: number;
+  idU_SP?: number;
+  date?: string;
 }
 
-export interface MedicalInfo {
+export interface SpecificationsMedicalStat {
+  id_SPEC: number;
+  type?: string;
+  url?: string;
+  description?: string;
+  id_dep?: number;
+}
+
+export interface BookingRequest {
+  idU_CL: number;
+  idU_SP: number;
+  date: string;
+  time: string;
+  duration?: string;
+  status?: string;
+  id_S?: number;
+}
+
+export interface Booking {
+  idU_CL: number;
+  idU_SP: number;
+  date: string;
+  time: string;
+  address?: string;
+  status?: string;
+  id_S?: number;
+}
+
+export interface Concerns {
   id_dep: number;
-  blood_type?: string;
-  allergies?: string;
-  medications?: string;
-  conditions?: string;
+  idU_CL: number;
+  idU_SP: number;
+  date: string;
+  time: string;
 }
 
-export interface AuthorizedPerson {
-  id_ap: number;
-  name?: string;
-  phone_number?: string;
-  national_id?: string;
-  id_u_cl?: number;
-}
-
-export interface InscriptionRequest {
-  id_r: number;
-  status?: string;       // default: 'pending'
-  submitted_at?: Date;
-  id_u_sp?: number;
-}
-
-export interface Feedback {
-  idu_cl: number;
-  idu_sp: number;
-  overall_rating?: number;
-  punctuality?: number;
-  comment?: string;
+export interface Payment {
+  id_P: number;
+  amount: number;
+  currency?: string;
+  status?: string;
+  payment_method?: string;
   created_at?: Date;
+  idU_CL?: number;
+  idU_SP?: number;
+  date?: string;
+  time?: string;
+}
+
+export interface Task {
+  idT: number;
+  name?: string;
+  start_time?: string;
+  end_time?: string;
+  duration?: string;
+  status?: string;
+  idU_CL?: number;
+  idU_SP?: number;
+  date?: string;
+  time?: string;
+}
+
+export interface File {
+  idF: number;
+  url?: string;
+  type?: string;
+  idT?: number;
 }
 
 export interface Report {
-  id_reporter: string;
-  id_reported: string;
+  email1: string;
+  email2: string;
   reason?: string;
   description?: string;
+  created_at?: Date;
+}
+
+export interface Feedback {
+  email1: string;
+  email2: string;
+  overall_rating?: number;
+  punctuality?: number;
+  comment?: string;
   created_at?: Date;
 }
 
@@ -194,6 +194,6 @@ export interface Notification {
   title: string;
   description?: string;
   type?: string;
-  is_read?: boolean;     // default: false
+  is_read?: boolean;
   created_at?: Date;
 }

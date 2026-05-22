@@ -5,7 +5,7 @@ interface InscriptionRequestAttributes {
   id_R: number;
   status: string;
   submitted_at: Date;
-  id_U_SP: number;
+  idU_A?: number;
 }
 
 interface InscriptionRequestCreationAttributes extends Optional<InscriptionRequestAttributes, 'id_R' | 'status' | 'submitted_at'> {}
@@ -14,7 +14,7 @@ export class InscriptionRequest extends Model<InscriptionRequestAttributes, Insc
   public id_R!: number;
   public status!: string;
   public submitted_at!: Date;
-  public id_U_SP!: number;
+  public idU_A?: number;
 }
 
 InscriptionRequest.init(
@@ -23,6 +23,7 @@ InscriptionRequest.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+      field: 'id_R',
     },
     status: {
       type: DataTypes.STRING(20),
@@ -32,12 +33,13 @@ InscriptionRequest.init(
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
-    id_U_SP: {
+    idU_A: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
+      field: 'idU_A',
       references: {
-        model: 'service_provider',
-        key: 'idU_SP',
+        model: 'admin',
+        key: 'idU_A',
       },
     },
   },
@@ -47,3 +49,5 @@ InscriptionRequest.init(
     timestamps: false,
   }
 );
+
+export default InscriptionRequest;

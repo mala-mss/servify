@@ -33,9 +33,10 @@ Notification.init(
     user_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'user_id',
       references: {
         model: 'user',
-        key: 'id',
+        key: 'IdU',
       },
     },
     title: {

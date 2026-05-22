@@ -23,6 +23,7 @@ File.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+      field: 'idf',
     },
     url: {
       type: DataTypes.TEXT,
@@ -33,9 +34,10 @@ File.init(
     idT: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'idt',
       references: {
         model: 'task',
-        key: 'idT',
+        key: 'idt',
       },
       onDelete: 'CASCADE',
     },

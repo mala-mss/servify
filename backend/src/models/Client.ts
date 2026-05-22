@@ -2,24 +2,24 @@ import { DataTypes, Model } from 'sequelize';
 import sequelize from '../config/database';
 
 interface ClientAttributes {
-  idU_cl: number;
+  idU_CL: number;
 }
 
 interface ClientCreationAttributes extends ClientAttributes {}
 
 export class Client extends Model<ClientAttributes, ClientCreationAttributes> implements ClientAttributes {
-  public idU_cl!: number;
+  public idU_CL!: number;
 }
 
 Client.init(
   {
-    idU_cl: {
+    idU_CL: {
       type: DataTypes.INTEGER,
       primaryKey: true,
-      field: 'idu_cl',
+      field: 'idU_CL',
       references: {
         model: 'user',
-        key: 'id',
+        key: 'IdU',
       },
     },
   },
@@ -29,3 +29,5 @@ Client.init(
     timestamps: false,
   }
 );
+
+export default Client;

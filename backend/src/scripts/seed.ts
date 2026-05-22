@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt';
-import { Account, User, Client, ServiceProvider, ServiceCategory } from '../models';
+import { Account, User, Client, ServiceProvider, ServiceCategory, Admin } from '../models';
 import { connectDB, syncDB } from '../config';
 
 const seedDatabase = async () => {
@@ -31,6 +31,7 @@ const seedDatabase = async () => {
     // 3. Assign Roles
     const clientUser = users.find(u => u.email === 'client@example.com');
     const providerUser = users.find(u => u.email === 'provider@example.com');
+    const adminUser = users.find(u => u.email === 'admin@example.com');
 
     if (clientUser) {
       await Client.create({ idU_cl: clientUser.id });
@@ -43,6 +44,10 @@ const seedDatabase = async () => {
         years_of_exp: 5,
         price_per_hour: 25.00
       });
+    }
+
+    if (adminUser) {
+      await Admin.create({ idU_A: adminUser.id });
     }
 
     // 4. Create Categories

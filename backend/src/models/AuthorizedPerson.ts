@@ -2,45 +2,42 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface AuthorizedPersonAttributes {
-  id_AP: number;
+  idU_AP: number;
   name?: string;
-  phone_number?: string;
-  national_id?: string;
-  id_U_CL: number;
+  relationship?: string;
+  idU_CL: number;
 }
 
-interface AuthorizedPersonCreationAttributes extends Optional<AuthorizedPersonAttributes, 'id_AP' | 'name' | 'phone_number' | 'national_id'> {}
+interface AuthorizedPersonCreationAttributes extends Optional<AuthorizedPersonAttributes, 'idU_AP' | 'name' | 'relationship'> {}
 
 export class AuthorizedPerson extends Model<AuthorizedPersonAttributes, AuthorizedPersonCreationAttributes> implements AuthorizedPersonAttributes {
-  public id_AP!: number;
+  public idU_AP!: number;
   public name?: string;
-  public phone_number?: string;
-  public national_id?: string;
-  public id_U_CL!: number;
+  public relationship?: string;
+  public idU_CL!: number;
 }
 
 AuthorizedPerson.init(
   {
-    id_AP: {
+    idU_AP: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+      field: 'idU_AP',
     },
     name: {
       type: DataTypes.STRING(100),
     },
-    phone_number: {
-      type: DataTypes.STRING(20),
-    },
-    national_id: {
+    relationship: {
       type: DataTypes.STRING(50),
     },
-    id_U_CL: {
+    idU_CL: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'idU_CL',
       references: {
         model: 'client',
-        key: 'idU_cl',
+        key: 'idU_CL',
       },
     },
   },
@@ -50,3 +47,5 @@ AuthorizedPerson.init(
     timestamps: false,
   }
 );
+
+export default AuthorizedPerson;

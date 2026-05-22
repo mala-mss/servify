@@ -5,7 +5,7 @@
 // ── User & Auth ──────────────────────────────────────────────
 
 export interface User {
-  id: number;
+  id: string;
   fname: string;
   lname: string;
   address?: string;
@@ -14,6 +14,8 @@ export interface User {
   email: string;
   created_at?: string;
   updated_at?: string;
+  status: string;             // default: 'active'
+  nbr_warning: number;        // default: 0
 }
 
 export interface Account {
@@ -46,6 +48,14 @@ export interface ServiceProvider {
   start_time?: string;         // TIME
   end_time?: string;           // TIME
 }
+
+export interface ProviderAvailability {
+  service_provider_id: number;
+  day_of_week: number;
+  start_time: string;
+  end_time: string;
+}
+
 
 // ── Services ─────────────────────────────────────────────────
 
@@ -128,6 +138,7 @@ export interface Document {
   width?: number;
   idu_sp?: number;             // FK → service_provider.idu_sp
   idu_cl?: number;             // FK → client.idu_cl
+  id_user?: number;            // FK → user.id
 }
 
 export interface Specification {
@@ -184,7 +195,16 @@ export interface InscriptionRequest {
   id_r: number;
   status?: string;             // default: 'pending'
   submitted_at?: string;
-  id_u_sp?: number;            // FK → service_provider.idu_sp
+  id_user?: number;            // FK → user.id
+  id_admin?: number;           // FK → admin.id_u_a
+  bio?: string;
+  years_of_exp?: number;
+  price_per_hour?: number;
+  work_late?: boolean;
+  work_outside_city?: boolean;
+  day_of_week?: string;
+  start_time?: string;
+  end_time?: string;
 }
 
 export interface Feedback {

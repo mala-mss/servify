@@ -1,9 +1,11 @@
-import { Router, Request, Response } from 'express';
-import { AuthRequest } from '../middleware/auth';
-import { User } from '../models';
+import { Router } from 'express';
 import { authenticate, authorize } from '../middleware/auth';
-import { AppError, asyncHandler } from '../middleware/errorHandler';
+import { asyncHandler } from '../middleware/errorHandler';
 import { searchProviders, getProviderById } from '../controllers/provider.controller';
+import { 
+  getAllUsers, getUserById, getCurrentUser, updateUser, deleteUser, 
+  updateAccountStatus, warnUser, getClientProfile 
+} from '../controllers/user.controller';
 import { 
   getDependants, addDependant, updateDependant, deleteDependant,
   getMedicalInfo, updateMedicalInfo,
@@ -14,6 +16,8 @@ const router = Router();
 
 router.get('/providers/search', asyncHandler(searchProviders));
 router.get('/providers/:id', asyncHandler(getProviderById));
+
+router.get('/clients/:id', authenticate, authorize('provider', 'admin'), asyncHandler(getClientProfile));
 
 // Client-specific management
 router.get('/dependants', authenticate, authorize('client'), asyncHandler(getDependants));
@@ -29,40 +33,18 @@ router.post('/authorized-people', authenticate, authorize('client'), asyncHandle
 router.put('/authorized-people/:id', authenticate, authorize('client'), asyncHandler(updateAuthorizedPerson));
 router.delete('/authorized-people/:id', authenticate, authorize('client'), asyncHandler(removeAuthorizedPerson));
 
-router.get('/', authenticate, authorize('admin'), asyncHandler(async (req: Request, res: Response) => {
-  const { role, isActive } = req.query;
+router.get('/', authenticate, authorize('admin'), asyncHandler(getAllUsers));
 
-  const where: any = {};
-  if (role) where.role = role;
-  if (isActive !== undefined) where.isActive = isActive === 'true';
+router.get('/me', authenticate, asyncHandler(getCurrentUser));
 
-  const users = await User.findAll({
-    where,
-    attributes: { exclude: ['password'] },
-    order: [['createdAt', 'DESC']],
-  });
+router.get('/:id', authenticate, asyncHandler(getUserById));
 
-  res.json({ users });
-}));
+router.patch('/:id', authenticate, asyncHandler(updateUser));
 
-router.get('/me', authenticate, asyncHandler(async (req: AuthRequest, res: Response) => {
-  const user = await User.findByPk(req.user!.id, {
-    attributes: { exclude: ['password'] },
-  });
+router.delete('/:id', authenticate, authorize('admin'), asyncHandler(deleteUser));
 
-  res.json({ user });
-}));
+router.patch('/:id/status', authenticate, authorize('admin'), asyncHandler(updateAccountStatus));
 
-router.get('/:id', authenticate, asyncHandler(async (req: Request, res: Response) => {
-  const user = await User.findByPk(req.params.id, {
-    attributes: { exclude: ['password'] },
-  });
-
-  if (!user) {
-    throw new AppError('User not found', 404);
-  }
-
-  res.json({ user });
-}));
+router.patch('/:id/warn', authenticate, authorize('admin'), asyncHandler(warnUser));
 
 export default router;

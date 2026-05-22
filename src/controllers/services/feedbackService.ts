@@ -1,5 +1,5 @@
 import api from './api';
-import { Feedback } from '../models';
+import type { Feedback } from '../../models';
 
 export interface CreateFeedbackRequest {
   booking_id: string;

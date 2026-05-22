@@ -19,7 +19,7 @@ Admin.init(
       field: 'idU_A',
       references: {
         model: 'user',
-        key: 'id',
+        key: 'IdU',
       },
     },
   },
@@ -30,3 +30,4 @@ Admin.init(
   }
 );
 
+export default Admin;

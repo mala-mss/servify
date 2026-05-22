@@ -7,21 +7,40 @@ import { Conversation } from '../models';
 // ── GET /bookings/stats ───────────────────────────────────────
 export const getBookingStats = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.userId;
+  const role = req.user?.role;
 
   try {
-    const stats = await query(
+    let whereClause = 'WHERE idu_cl = $1 OR idu_sp = $1';
+    let params = [userId];
+
+    if (role === 'admin') {
+      whereClause = '';
+      params = [];
+    }
+
+    const statsResult = await query(
       `SELECT
          COUNT(*) FILTER (WHERE status = 'confirmed') AS confirmed,
-         COUNT(*) FILTER (WHERE status = 'pending')   AS pending,
          COUNT(*) FILTER (WHERE status = 'completed') AS completed,
          COUNT(*) FILTER (WHERE status = 'cancelled') AS cancelled,
          COUNT(*)                                     AS total
        FROM booking
-       WHERE idu_cl = $1 OR idu_sp = $1`,
-      [userId]
+       ${whereClause}`,
+      params
     );
 
-    res.json({ success: true, stats: stats.rows[0] });
+    const pendingResult = await query(
+      `SELECT COUNT(*) as pending FROM booking_request
+       ${whereClause.replace('idu_cl', 'idu_cl').replace('idu_sp', 'idu_sp')} AND status = 'pending'`,
+      params
+    );
+
+    const stats = {
+      ...statsResult.rows[0],
+      pending: parseInt(pendingResult.rows[0]?.pending || '0')
+    };
+
+    res.json({ success: true, stats });
   } catch (error: any) {
     console.error('Get booking stats error:', error);
     res.status(500).json({ message: 'Internal server error' });
@@ -31,24 +50,39 @@ export const getBookingStats = async (req: AuthRequest, res: Response): Promise<
 // ── GET /bookings ─────────────────────────────────────────────
 export const getBookings = async (req: AuthRequest, res: Response): Promise<void> => {
   const userId = req.userId;
+  const role = req.user?.role;
   const { status } = req.query;
 
   try {
     let sql = `
       SELECT
         b.*,
+        s.name AS service_name,
         (cl.fname || ' ' || cl.lname) AS client_name,
-        (sp.fname || ' ' || sp.lname) AS provider_name
+        (sp.fname || ' ' || sp.lname) AS provider_name,
+        EXISTS (SELECT 1 FROM payment p WHERE p.id_b = b.id_b AND p.stage = 1 AND p.status = 'paid') as first_payment_done,
+        EXISTS (SELECT 1 FROM payment p WHERE p.id_b = b.id_b AND p.stage = 2 AND p.status = 'paid') as second_payment_done
       FROM booking b
       JOIN "user" cl ON cl.id = b.idu_cl
       JOIN "user" sp ON sp.id = b.idu_sp
-      WHERE b.idu_cl = $1 OR b.idu_sp = $1
+      LEFT JOIN service s ON s.id_s = b.service_id
     `;
-    const params: any[] = [userId];
+
+    const params: any[] = [];
+    let whereConditions: string[] = [];
+
+    if (role !== 'admin') {
+      params.push(userId);
+      whereConditions.push(`(b.idu_cl = $${params.length} OR b.idu_sp = $${params.length})`);
+    }
 
     if (status) {
       params.push(status);
-      sql += ` AND b.status = $${params.length}`;
+      whereConditions.push(`b.status = $${params.length}`);
+    }
+
+    if (whereConditions.length > 0) {
+      sql += ' WHERE ' + whereConditions.join(' AND ');
     }
 
     sql += ' ORDER BY b.date DESC, b.time DESC';
@@ -62,7 +96,7 @@ export const getBookings = async (req: AuthRequest, res: Response): Promise<void
 };
 
 export const createBookingRequest = async (req: AuthRequest, res: Response): Promise<void> => {
-  const { service_id, service_provider_id, date, time, duration } = req.body;
+  const { service_id, service_provider_id, date, time, duration, id_dep } = req.body;
   const userId = req.userId;
 
   try {
@@ -84,11 +118,20 @@ export const createBookingRequest = async (req: AuthRequest, res: Response): Pro
       return;
     }
 
+    // Optional: Verify dependant belongs to client
+    if (id_dep) {
+      const depResult = await query('SELECT id_dep FROM dependant WHERE id_dep = $1 AND id_u_cl = $2', [id_dep, userId]);
+      if (depResult.rows.length === 0) {
+        res.status(400).json({ message: 'Invalid dependant ID' });
+        return;
+      }
+    }
+
     const bookingRequest = await query(
-      `INSERT INTO booking_request (idu_cl, idu_sp, service_id, date, time, duration, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO booking_request (idu_cl, idu_sp, service_id, date, time, duration, status, id_dep)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING *`,
-      [userId, service_provider_id, service_id, date, time, duration ?? null, 'pending']
+      [userId, service_provider_id, service_id, date, time, duration ?? null, 'pending', id_dep ?? null]
     );
 
     // Get service name for notification
@@ -142,10 +185,10 @@ export const acceptBookingRequest = async (req: AuthRequest, res: Response): Pro
 
     // Create confirmed booking
     const booking = await query(
-      `INSERT INTO booking (idu_cl, idu_sp, date, time, address, status, service_id)
-       VALUES ($1, $2, $3, $4, $5, 'confirmed', $6)
+      `INSERT INTO booking (idu_cl, idu_sp, date, time, address, status, service_id, id_dep)
+       VALUES ($1, $2, $3, $4, $5, 'confirmed', $6, $7)
        RETURNING *`,
-      [br.idu_cl, br.idu_sp, br.date, br.time, address ?? null, br.service_id]
+      [br.idu_cl, br.idu_sp, br.date, br.time, address ?? null, br.service_id, br.id_dep]
     );
 
     // Update booking request status
@@ -178,7 +221,7 @@ export const acceptBookingRequest = async (req: AuthRequest, res: Response): Pro
       'Payment Required',
       `Your booking for ${serviceName} is confirmed. Please proceed to payment to finalize the arrangement.`,
       'payment',
-      `/client/payment/${booking.rows[0].id_b}`
+      `/client/checkout?bookingId=${booking.rows[0].id_b}`
     );
 
     res.status(200).json({
@@ -280,14 +323,18 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response): Prom
   const { id_B } = req.params;
   const { status } = req.body;
   const userId = req.userId;
+  const role = req.user?.role;
 
   try {
-    const result = await query(
-      `UPDATE booking SET status = $1
-       WHERE id_b = $2 AND (idu_cl = $3 OR idu_sp = $3)
-       RETURNING *`,
-      [status, id_B, userId]
-    );
+    let sql = `UPDATE booking SET status = $1 WHERE id_b = $2`;
+    let params = [status, id_B];
+
+    if (role !== 'admin') {
+      sql += ` AND (idu_cl = $3 OR idu_sp = $3)`;
+      params.push(userId);
+    }
+
+    const result = await query(sql + ' RETURNING *', params);
 
     if (result.rows.length === 0) {
       res.status(404).json({ message: 'Booking not found or unauthorized' });
@@ -311,6 +358,126 @@ export const updateBookingStatus = async (req: AuthRequest, res: Response): Prom
     res.json({ success: true, message: 'Booking updated successfully', booking });
   } catch (error: any) {
     console.error('Update booking status error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const requestFirstHalfPayment = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id_B } = req.params;
+  const userId = req.userId;
+
+  try {
+    const result = await query(
+      `SELECT b.*, s.name as service_name 
+       FROM booking b 
+       LEFT JOIN service s ON s.id_s = b.service_id 
+       WHERE b.id_b = $1::integer AND b.idu_sp = $2`,
+      [id_B, userId]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ message: 'Booking not found or unauthorized' });
+      return;
+    }
+
+    const booking = result.rows[0];
+    const serviceName = booking.service_name || 'your service';
+
+    await createNotificationInternal(
+      booking.idu_cl,
+      'Payment Required',
+      `The provider has requested the first half of the payment for ${serviceName}.`,
+      'payment',
+      `/client/checkout?bookingId=${id_B}`
+    );
+
+    res.json({ success: true, message: 'First half payment request sent to client' });
+  } catch (error: any) {
+    console.error('Request first half payment error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const requestSecondHalfPayment = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id_B } = req.params;
+  const userId = req.userId;
+
+  try {
+    const result = await query(
+      `SELECT b.*, s.name as service_name 
+       FROM booking b 
+       LEFT JOIN service s ON s.id_s = b.service_id 
+       WHERE b.id_b = $1::integer AND b.idu_sp = $2`,
+      [id_B, userId]
+    );
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ message: 'Booking not found or unauthorized' });
+      return;
+    }
+
+    const booking = result.rows[0];
+    const serviceName = booking.service_name || 'your service';
+
+    await createNotificationInternal(
+      booking.idu_cl,
+      'Second Half Payment Required',
+      `The provider has requested the second half of the payment for ${serviceName}.`,
+      'payment',
+      `/client/checkout?bookingId=${id_B}&stage=second`
+    );
+
+    res.json({ success: true, message: 'Second half payment request sent to client' });
+  } catch (error: any) {
+    console.error('Request second half payment error:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+export const getBookingById = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id_B } = req.params;
+  const userId = req.userId;
+  const role = req.user?.role;
+
+  try {
+    let sql = `
+      SELECT
+        b.*,
+        (cl.fname || ' ' || cl.lname) AS client_name,
+        cl.phone_number AS client_phone,
+        cl.address AS client_address,
+        (sp.fname || ' ' || sp.lname) AS provider_name,
+        s.name AS service_name,
+        s.base_price AS amount
+      FROM booking b
+      JOIN "user" cl ON cl.id = b.idu_cl
+      JOIN "user" sp ON sp.id = b.idu_sp
+      LEFT JOIN service s ON s.id_s = b.service_id
+      WHERE b.id_b = $1::integer
+    `;
+    
+    const params: (string | number)[] = [id_B];
+
+    if (role !== 'admin') {
+      if (userId === undefined) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+
+      sql += ` AND (b.idu_cl = $2 OR b.idu_sp = $2)`;
+      params.push(userId);
+    }
+
+    const result = await query(sql, params);
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ message: 'Booking not found' });
+      return;
+    }
+
+    res.json({ success: true, booking: result.rows[0] });
+  } catch (error: any) {
+    console.error('Get booking by ID error:', error);
     res.status(500).json({ message: 'Internal server error' });
   }
 };

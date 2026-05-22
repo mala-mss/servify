@@ -1,5 +1,5 @@
 import api from './api';
-import { Payment } from '../models';
+import type { Payment } from '../../models';
 
 export interface CreatePaymentRequest {
   booking_id: string;

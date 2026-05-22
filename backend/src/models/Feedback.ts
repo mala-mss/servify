@@ -2,66 +2,61 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../config/database';
 
 interface FeedbackAttributes {
-  idU_cl: number;
-  idU_SP: number;
+  email1: string;
+  email2: string;
   overall_rating?: number;
   punctuality?: number;
-  title?: string;
   comment?: string;
-  is_verified_booking?: boolean;
-  created_at: Date;
+  created_at?: Date;
 }
 
-interface FeedbackCreationAttributes extends Optional<FeedbackAttributes, 'overall_rating' | 'punctuality' | 'title' | 'comment' | 'is_verified_booking' | 'created_at'> {}
+interface FeedbackCreationAttributes extends Optional<FeedbackAttributes, 'overall_rating' | 'punctuality' | 'comment' | 'created_at'> {}
 
 export class Feedback extends Model<FeedbackAttributes, FeedbackCreationAttributes> implements FeedbackAttributes {
-  public idU_cl!: number;
-  public idU_SP!: number;
+  public email1!: string;
+  public email2!: string;
   public overall_rating?: number;
   public punctuality?: number;
-  public title?: string;
   public comment?: string;
-  public is_verified_booking?: boolean;
   public readonly created_at!: Date;
 }
 
 Feedback.init(
   {
-    idU_cl: {
-      type: DataTypes.INTEGER,
+    email1: {
+      type: DataTypes.STRING(100),
       primaryKey: true,
+      field: 'email1',
       references: {
-        model: 'client',
-        key: 'idU_cl',
+        model: 'account',
+        key: 'email',
       },
     },
-    idU_SP: {
-      type: DataTypes.INTEGER,
+    email2: {
+      type: DataTypes.STRING(100),
       primaryKey: true,
+      field: 'email2',
       references: {
-        model: 'service_provider',
-        key: 'idU_SP',
+        model: 'account',
+        key: 'email',
       },
     },
     overall_rating: {
       type: DataTypes.DECIMAL(3, 2),
+      field: 'overall_rating',
     },
     punctuality: {
       type: DataTypes.DECIMAL(3, 2),
-    },
-    title: {
-      type: DataTypes.STRING(100),
+      field: 'punctuality',
     },
     comment: {
       type: DataTypes.TEXT,
-    },
-    is_verified_booking: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
+      field: 'comment',
     },
     created_at: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
+      field: 'created_at',
     },
   },
   {

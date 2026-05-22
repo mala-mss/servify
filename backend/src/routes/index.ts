@@ -10,3 +10,5 @@ export { default as notificationRoutes } from './notification.routes';
 export { default as providerRoutes } from './provider.routes';
 export { default as chatRoutes } from './chat.routes';
 export { default as userPublicKeyRoutes } from './userPublicKey.routes';
+export { default as adminRoutes } from './admin.routes';
+export { default as reportRoutes } from './report.routes';

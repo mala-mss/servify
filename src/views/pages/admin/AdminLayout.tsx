@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "@/controllers/context/ThemeContext";
 import { useAuth } from "@/controllers/context/AuthContext";
+import { adminService } from '@/controllers/services/adminService';
+import { reportService } from '@/controllers/services/reportService';
 import { 
   LayoutDashboard, 
   BarChart3, 
@@ -15,41 +17,69 @@ import {
   ShieldCheck,
   Search,
   Moon,
-  Sun
+  Sun,
+  LogOut
 } from 'lucide-react';
-
-const NAV = [
-  {
-    section: "Overview",
-    items: [
-      { to: "/admin/dashboard",   icon: LayoutDashboard, label: "Dashboard" },
-      { to: "/admin/analytics",   icon: BarChart3,       label: "Analytics" },
-      { to: "/admin/approvals",   icon: UserPlus,         label: "Registration Requests", badge: 3 },
-    ],
-  },
-  {
-    section: "Management",
-    items: [
-      { to: "/admin/users",       icon: Users,           label: "Users" },
-      { to: "/admin/bookings",    icon: Calendar,        label: "Bookings" },
-      { to: "/admin/services",    icon: Sparkles,        label: "Services" },
-      { to: "/admin/categories",  icon: FolderTree,      label: "Categories" },
-    ],
-  },
-  {
-    section: "Platform",
-    items: [
-      { to: "/admin/reports",     icon: Flag,            label: "Reports", badge: 5 },
-      { to: "/admin/settings",    icon: SettingsIcon,    label: "Settings" },
-    ],
-  },
-];
 
 export default function AdminLayout() {
   const { palette: p, mode, toggle } = useTheme();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [counts, setCounts] = useState({ approvals: 0, reports: 0 });
+
+  useEffect(() => {
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 60000); // Refresh every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchCounts = async () => {
+    try {
+      const [appr, reps] = await Promise.all([
+        adminService.getApprovals(),
+        reportService.getAll()
+      ]);
+      setCounts({
+        approvals: appr.requests.length,
+        reports: reps.reports.length
+      });
+    } catch (err) {
+      console.error("Error fetching sidebar counts:", err);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  const NAV = [
+    {
+      section: "Overview",
+      items: [
+        { to: "/admin/dashboard",   icon: LayoutDashboard, label: "Dashboard" },
+        { to: "/admin/analytics",   icon: BarChart3,       label: "Analytics" },
+        { to: "/admin/approvals",   icon: ShieldCheck,     label: "Verification", badge: counts.approvals },
+      ],
+    },
+    {
+      section: "Management",
+      items: [
+        { to: "/admin/users",       icon: Users,           label: "Users" },
+        { to: "/admin/bookings",    icon: Calendar,        label: "Bookings" },
+        { to: "/admin/services",    icon: Sparkles,        label: "Services" },
+        { to: "/admin/categories",  icon: FolderTree,      label: "Categories" },
+      ],
+    },
+    {
+      section: "Platform",
+      items: [
+        { to: "/admin/reports",     icon: Flag,            label: "Reports", badge: counts.reports },
+        { to: "/admin/settings",    icon: SettingsIcon,    label: "Settings" },
+      ],
+    },
+  ];
 
   const sbStyle: React.CSSProperties = {
     width: 260, 
@@ -109,11 +139,11 @@ export default function AdminLayout() {
                       }}>
                         <Icon size={18} strokeWidth={isActive ? 2.5 : 2} />
                         <span style={{ flex: 1 }}>{item.label}</span>
-                        {item.badge && (
+                        {item.badge ? (
                           <span style={{ background: item.to.includes('reports') ? "#f43f5e" : p.primary, color: "#fff", fontSize: 10, fontWeight: 600, padding: "2px 7px", borderRadius: 999 }}>
                             {item.badge}
                           </span>
-                        )}
+                        ) : null}
                       </div>
                     )}
                   </NavLink>
@@ -124,19 +154,31 @@ export default function AdminLayout() {
         </div>
 
         {/* Bottom user row */}
-        <div style={{ padding: "16px", borderTop: `1px solid ${p.border}` }}>
+        <div style={{ padding: "16px", borderTop: `1px solid ${p.border}`, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div
             onClick={() => navigate('/admin/settings')}
             style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px", borderRadius: 12, cursor: "pointer", transition: "background .15s", background: mode === "dark" ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)" }}
           >
             <div style={{ width: 36, height: 36, borderRadius: "50%", background: `linear-gradient(135deg, ${p.primary}, ${p.secondary})`, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 600, flexShrink: 0 }}>
-              {user?.name?.[0] || 'A'}
+              {user?.fname?.[0] || 'A'}
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 14, fontWeight: 500, color: p.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.name || 'Administrator'}</div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: p.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.fname} {user?.lname}</div>
               <div style={{ fontSize: 11, color: p.textMuted }}>System Admin</div>
             </div>
           </div>
+          <button 
+            onClick={handleLogout}
+            style={{ 
+              display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', 
+              background: 'transparent', border: 'none', borderRadius: 8, color: '#f43f5e', 
+              fontSize: 14, fontWeight: 500, cursor: 'pointer', transition: 'all 0.2s',
+              textAlign: 'left', width: '100%'
+            }}
+          >
+            <LogOut size={18} />
+            Sign Out
+          </button>
         </div>
       </aside>
 
@@ -181,15 +223,3 @@ export default function AdminLayout() {
     </div>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-

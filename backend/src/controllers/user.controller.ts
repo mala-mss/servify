@@ -220,13 +220,109 @@ export const warnUser = async (req: AuthRequest, res: Response): Promise<void> =
   }
 };
 
+// ── GET /users/clients/:id  (for providers to see clients) ──
+export const getClientProfile = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const requesterId = req.userId;
+  const requesterRole = req.user?.role;
+
+  console.log(`[getClientProfile] ${requesterRole} ${requesterId} fetching client ${id}`);
+
+  try {
+    const userResult = await query(
+      `SELECT ${USER_FIELDS} ${USER_JOIN} WHERE u.id = $1`,
+      [id]
+    );
+
+    if (userResult.rows.length === 0) {
+      console.log(`[getClientProfile] User ${id} not found`);
+      res.status(404).json({ success: false, message: 'Client not found' });
+      return;
+    }
+
+    const client = userResult.rows[0];
+
+    // Check if this is indeed a client
+    const role = await resolveRole(parseInt(id));
+    if (role !== 'client') {
+      console.log(`[getClientProfile] User ${id} is a ${role}, not a client`);
+      res.status(400).json({ success: false, message: 'User is not a client' });
+      return;
+    }
+
+    // Fetch dependants - match database.sql casing (id_u_cl)
+    const dependantsResult = await query(
+      'SELECT * FROM dependant WHERE id_u_cl = $1',
+      [id]
+    );
+
+    // Fetch authorized persons - match database.sql casing (id_u_cl)
+    const authorizedResult = await query(
+      'SELECT * FROM authorized_person WHERE id_u_cl = $1',
+      [id]
+    );
+
+    // Check for active booking - match database.sql casing (idu_cl, idu_sp)
+    // If admin, we skip the active booking check or just show it based on some logic
+    let hasActiveBooking = false;
+    if (requesterRole === 'provider') {
+        const bookingResult = await query(
+          `SELECT id_b FROM booking 
+           WHERE idu_cl = $1 AND idu_sp = $2 AND status IN ('confirmed', 'in_progress', 'completed')
+           LIMIT 1`,
+          [id, requesterId]
+        );
+        hasActiveBooking = bookingResult.rows.length > 0;
+    } else if (requesterRole === 'admin') {
+        hasActiveBooking = true; // Admins see everything
+    }
+
+    console.log(`[getClientProfile] Found ${dependantsResult.rows.length} dependants, ${authorizedResult.rows.length} authorized persons. Active booking: ${hasActiveBooking}`);
+
+    res.json({
+      success: true,
+      client: {
+        ...client,
+        dependants: dependantsResult.rows,
+        authorizedPersons: authorizedResult.rows,
+        hasActiveBooking: hasActiveBooking
+      }
+    });
+  } catch (error: any) {
+    console.error('Get client profile error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 // ── Internal helper ───────────────────────────────────────────
 async function resolveRole(userId: number): Promise<string> {
-  const adminCheck = await query('SELECT idu_a FROM admin WHERE idu_a = $1', [userId]);
-  if (adminCheck.rows.length > 0) return 'admin';
+  console.log(`[resolveRole] Resolving role for user ${userId}`);
 
-  const providerCheck = await query('SELECT idu_sp FROM service_provider WHERE idu_sp = $1', [userId]);
-  if (providerCheck.rows.length > 0) return 'provider';
+  try {
+      // Check Admin - match database.sql "idU_A"
+      const adminCheck = await query('SELECT "idU_A" FROM admin WHERE "idU_A" = $1', [userId]);
+      if (adminCheck.rows.length > 0) {
+        console.log(`[resolveRole] User ${userId} is admin`);
+        return 'admin';
+      }
 
+      // Check Provider - match database.sql idu_sp
+      const providerCheck = await query('SELECT idu_sp FROM service_provider WHERE idu_sp = $1', [userId]);
+      if (providerCheck.rows.length > 0) {
+        console.log(`[resolveRole] User ${userId} is provider`);
+        return 'provider';
+      }
+
+      // Check Client - match database.sql idu_cl
+      const clientCheck = await query('SELECT idu_cl FROM client WHERE idu_cl = $1', [userId]);
+      if (clientCheck.rows.length > 0) {
+        console.log(`[resolveRole] User ${userId} is client`);
+        return 'client';
+      }
+  } catch (error) {
+      console.error(`[resolveRole] Error:`, error);
+  }
+
+  console.log(`[resolveRole] User ${userId} has no specific role entry, defaulting to client`);
   return 'client';
 }

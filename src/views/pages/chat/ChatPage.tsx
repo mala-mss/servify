@@ -25,6 +25,13 @@ const ChatPage: React.FC = () => {
   const { user } = useAuth();
   const { palette: p, mode } = useTheme();
   const navigate = useNavigate();
+
+  const getRoleDisplay = (role: string) => {
+    if (role === 'provider') return 'SERVICE PROVIDER';
+    if (role === 'client') return 'CLIENT';
+    if (role === 'admin') return 'ADMIN';
+    return role?.toUpperCase() || 'USER';
+  };
   
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
@@ -90,7 +97,11 @@ const ChatPage: React.FC = () => {
       let otherUserFromConversation: any = null;
 
       if (currentConv) {
-        const other = user!.role === 'client' ? currentConv.provider.user : currentConv.client.user;
+        // Correct logic to find the OTHER user regardless of current user's role
+        const other = Number(currentConv.idu_cl) === Number(user?.id) 
+          ? currentConv.provider.user 
+          : currentConv.client.user;
+        
         if (other) {
           otherUserFromConversation = other;
           otherUserId = other.id;
@@ -104,18 +115,16 @@ const ChatPage: React.FC = () => {
           try {
             const userResponse = await userService.getById(otherSenderId.toString());
             const userData = userResponse.user;
-            const roleDisplay = user!.role === 'client' ? 'SERVICE PROVIDER' : 'CLIENT';
             const ou = {
               ...userData,
-              role: roleDisplay,
+              role: getRoleDisplay(userData.role),
               fname: userData.fname || 'Unknown',
               lname: userData.lname || 'User'
             };
             setOtherUser(ou);
             otherUserRef.current = ou;
           } catch (err) {
-            const roleDisplay = user!.role === 'client' ? 'SERVICE PROVIDER' : 'CLIENT';
-            const ou = { id: otherUserId, role: roleDisplay, fname: 'Unknown', lname: 'User' };
+            const ou = { id: otherUserId, role: 'USER', fname: 'Unknown', lname: 'User' };
             setOtherUser(ou);
             otherUserRef.current = ou;
           }
@@ -123,15 +132,28 @@ const ChatPage: React.FC = () => {
       }
 
       if (otherUserFromConversation) {
-        const roleDisplay = user!.role === 'client' ? 'SERVICE PROVIDER' : 'CLIENT';
-        const ou = {
-          ...otherUserFromConversation,
-          role: roleDisplay,
-          fname: otherUserFromConversation.fname || 'Unknown',
-          lname: otherUserFromConversation.lname || 'User'
-        };
-        setOtherUser(ou);
-        otherUserRef.current = ou;
+        // If we got it from conversation, we might need to fetch full user to get role correctly if not included
+        try {
+          const userResponse = await userService.getById(otherUserFromConversation.id.toString());
+          const userData = userResponse.user;
+          const ou = {
+            ...userData,
+            role: getRoleDisplay(userData.role),
+            fname: userData.fname || 'Unknown',
+            lname: userData.lname || 'User'
+          };
+          setOtherUser(ou);
+          otherUserRef.current = ou;
+        } catch (err) {
+          const ou = {
+            ...otherUserFromConversation,
+            role: user!.role === 'client' ? 'SERVICE PROVIDER' : 'CLIENT',
+            fname: otherUserFromConversation.fname || 'Unknown',
+            lname: otherUserFromConversation.lname || 'User'
+          };
+          setOtherUser(ou);
+          otherUserRef.current = ou;
+        }
       }
 
       if (otherUserId) {
@@ -256,20 +278,54 @@ const ChatPage: React.FC = () => {
           <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', color: p.text, cursor: 'pointer' }}>
             <ChevronLeft size={24} />
           </button>
-          <div style={{ width: 44, height: 44, borderRadius: '14px', background: p.primary + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-            {otherUser?.profile_picture ? (
-              <img src={otherUser.profile_picture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <UserIcon size={24} color={p.primary} />
-            )}
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, fontSize: '16px', color: p.text }}>{otherUser?.fname} {otherUser?.lname}</div>
-            <div style={{ fontSize: '12px', color: p.primary, fontWeight: 700, letterSpacing: '0.5px' }}>{otherUser?.role}</div>
+          <div 
+            onClick={() => {
+              if (otherUser?.id) {
+                if (user?.role === 'client') {
+                  navigate(`/client/provider/${otherUser.id}`);
+                } else if (user?.role === 'provider') {
+                  navigate(`/profile/client/${otherUser.id}`);
+                } else if (user?.role === 'admin') {
+                   // Admins can see both
+                   if (otherUser.role === 'SERVICE PROVIDER') {
+                     navigate(`/client/provider/${otherUser.id}`);
+                   } else {
+                     navigate(`/admin/users/${otherUser.id}`);
+                   }
+                }
+              }
+            }}
+            style={{ display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }}
+          >
+            <div style={{ width: 44, height: 44, borderRadius: '14px', background: p.primary + '20', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+              {otherUser?.profile_picture ? (
+                <img src={otherUser.profile_picture} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              ) : (
+                <UserIcon size={24} color={p.primary} />
+              )}
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '16px', color: p.text }}>{otherUser?.fname} {otherUser?.lname}</div>
+              <div style={{ fontSize: '12px', color: p.primary, fontWeight: 700, letterSpacing: '0.5px' }}>{otherUser?.role}</div>
+            </div>
           </div>
         </div>
         <button 
-          onClick={() => navigate(`/profile/${otherUser?.role?.toLowerCase() === 'client' ? 'client' : 'provider'}/${otherUser?.id}`)}
+          onClick={() => {
+            if (otherUser?.id) {
+              if (user?.role === 'client') {
+                navigate(`/client/provider/${otherUser.id}`);
+              } else if (user?.role === 'provider') {
+                navigate(`/profile/client/${otherUser.id}`);
+              } else if (user?.role === 'admin') {
+                 if (otherUser.role === 'SERVICE PROVIDER') {
+                   navigate(`/client/provider/${otherUser.id}`);
+                 } else {
+                   navigate(`/admin/users/${otherUser.id}`);
+                 }
+              }
+            }
+          }}
           style={{ 
             fontSize: '12px', 
             padding: '8px 16px',

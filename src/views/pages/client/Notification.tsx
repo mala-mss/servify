@@ -160,6 +160,27 @@ export default function Notification() {
                         <span style={{ ...styles.notifTime, color: p.textMuted }}>{formatDate(n.created_at)}</span>
                       </div>
                       <div style={{ ...styles.notifDesc, color: p.textMuted }}>{n.description}</div>
+                      {n.type === 'payment' && n.action_link && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleNotificationClick(n);
+                          }}
+                          style={{
+                            marginTop: '12px',
+                            background: p.primary,
+                            color: '#fff',
+                            border: 'none',
+                            padding: '8px 16px',
+                            borderRadius: '8px',
+                            fontSize: '13px',
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Proceed to Payment
+                        </button>
+                      )}
                     </div>
                     {!n.is_read && <div style={{ ...styles.unreadDot, background: p.primary }} />}
                   </motion.div>

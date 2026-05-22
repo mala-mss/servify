@@ -1,5 +1,5 @@
 import api from './api';
-import { User } from '../models';
+import type { User } from '../../models';
 
 export interface LoginRequest {
   email: string;

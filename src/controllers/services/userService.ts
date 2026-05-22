@@ -45,6 +45,16 @@ export const userService = {
     return response.data;
   },
 
+  updateStatus: async (id: string, status: string): Promise<{ message: string, account: any }> => {
+    const response = await api.patch<{ message: string, account: any }>(`/users/${id}/status`, { status });
+    return response.data;
+  },
+
+  warn: async (id: string): Promise<{ message: string, account: any }> => {
+    const response = await api.patch<{ message: string, account: any }>(`/users/${id}/warn`);
+    return response.data;
+  },
+
   // Dependant Management
 
   getDependants: async (): Promise<{ dependants: Dependant[] }> => {

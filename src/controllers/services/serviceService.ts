@@ -27,6 +27,21 @@ export const serviceService = {
     return response.data;
   },
 
+  createCategory: async (data: { name: string, description?: string }): Promise<{ category: ServiceCategory }> => {
+    const response = await api.post<{ category: ServiceCategory }>('/services/categories', data);
+    return response.data;
+  },
+
+  updateCategory: async (id: string, data: { name?: string, description?: string }): Promise<{ category: ServiceCategory }> => {
+    const response = await api.put<{ category: ServiceCategory }>(`/services/categories/${id}`, data);
+    return response.data;
+  },
+
+  deleteCategory: async (id: string): Promise<{ message: string }> => {
+    const response = await api.delete<{ message: string }>(`/services/categories/${id}`);
+    return response.data;
+  },
+
   getById: async (id: string): Promise<{ service: Service }> => {
     const response = await api.get<{ service: Service }>(`/services/${id}`);
     return response.data;

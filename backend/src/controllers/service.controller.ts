@@ -116,10 +116,58 @@ export const deleteService = async (req: AuthRequest, res: Response): Promise<vo
 
 export const getCategories = async (_req: AuthRequest, res: Response): Promise<void> => {
   try {
-    const result = await query('SELECT * FROM service_category');
+    const result = await query('SELECT * FROM service_category ORDER BY name');
     res.json({ success: true, categories: result.rows || [] });
   } catch (error: any) {
     console.error('Get categories error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+export const createCategory = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { name, description } = req.body;
+  try {
+    const result = await query(
+      'INSERT INTO service_category (name, description) VALUES ($1, $2) RETURNING *',
+      [name, description]
+    );
+    res.status(201).json({ success: true, category: result.rows[0] });
+  } catch (error: any) {
+    console.error('Create category error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+export const updateCategory = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { name, description } = req.body;
+  try {
+    const result = await query(
+      'UPDATE service_category SET name = COALESCE($1, name), description = COALESCE($2, description) WHERE id_C = $3 RETURNING *',
+      [name, description, id]
+    );
+    if (result.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'Category not found' });
+      return;
+    }
+    res.json({ success: true, category: result.rows[0] });
+  } catch (error: any) {
+    console.error('Update category error:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+export const deleteCategory = async (req: AuthRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  try {
+    const result = await query('DELETE FROM service_category WHERE id_C = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) {
+      res.status(404).json({ success: false, message: 'Category not found' });
+      return;
+    }
+    res.json({ success: true, message: 'Category deleted successfully' });
+  } catch (error: any) {
+    console.error('Delete category error:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

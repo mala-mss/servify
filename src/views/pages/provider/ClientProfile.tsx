@@ -33,12 +33,16 @@ const ClientProfile: React.FC = () => {
 
   const fetchClientProfile = async () => {
     try {
+      console.log(`Fetching client profile for ID: ${id}`);
       const res = await axiosInstance.get(`/users/clients/${id}`);
+      console.log('Client profile response:', res.data);
       if (res.data.success) {
         setClient(res.data.client);
+      } else {
+        console.error('API returned failure:', res.data.message);
       }
-    } catch (error) {
-      console.error('Failed to fetch client profile:', error);
+    } catch (error: any) {
+      console.error('Failed to fetch client profile:', error.response?.data || error.message);
     } finally {
       setLoading(false);
     }

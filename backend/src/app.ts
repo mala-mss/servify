@@ -14,7 +14,9 @@ import {
   paymentRoutes,
   availabilityRoutes,
   chatRoutes,
-  userPublicKeyRoutes
+  userPublicKeyRoutes,
+  adminRoutes,
+  reportRoutes
 } from './routes';
 
 
@@ -51,6 +53,8 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/availability', availabilityRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/user-public-key', userPublicKeyRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Health check
 app.get('/api/health', async (_req, res) => {

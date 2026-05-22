@@ -24,10 +24,7 @@ router.get('/:id', authenticate, asyncHandler(getTransactionById));
 router.post(
   '/',
   authenticate,
-  authorize('admin'),
   validate([
-    body('userId').isUUID().withMessage('Valid user ID is required'),
-    body('type').isIn(['payment', 'payout', 'refund']).withMessage('Invalid transaction type'),
     body('amount').isFloat({ min: 0 }).withMessage('Amount must be a positive number'),
   ]),
   asyncHandler(createTransaction)

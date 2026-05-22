@@ -1,11 +1,4 @@
--- ============================================
--- Database Schema for Family Care Application
--- Based on professor's specifications
--- ============================================
 
--- ============================================
--- ACCOUNT (email is PK)
--- ============================================
 CREATE TABLE account (
   email           VARCHAR(100) PRIMARY KEY,
   password        VARCHAR(255) NOT NULL,
@@ -15,9 +8,7 @@ CREATE TABLE account (
   updated_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
 
--- ============================================
--- USER (references account.email)
--- ============================================
+
 CREATE TABLE "user" (
   id              SERIAL PRIMARY KEY,
   fname           VARCHAR(100) NOT NULL,
@@ -30,20 +21,17 @@ CREATE TABLE "user" (
   updated_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- ============================================
--- ROLE TABLES
--- ============================================
--- Admin (idU_A)
+
 CREATE TABLE admin (
   idU_A   INT PRIMARY KEY REFERENCES "user"(id) ON DELETE CASCADE
 );
 
--- Client (idU_cl)
+
 CREATE TABLE client (
   idU_cl  INT PRIMARY KEY REFERENCES "user"(id) ON DELETE CASCADE
 );
 
--- ServiceProvider (idU_SP, with availability)
+
 CREATE TABLE service_provider (
   idU_SP            INT PRIMARY KEY REFERENCES "user"(id) ON DELETE CASCADE,
   bio               TEXT,
@@ -58,9 +46,7 @@ CREATE TABLE service_provider (
   end_time          TIME
 );
 
--- ============================================
--- INSCRIPTION REQUEST
--- ============================================
+
 CREATE TABLE inscription_request (
   id_R                SERIAL PRIMARY KEY,
   status              VARCHAR(20) DEFAULT 'pending',
@@ -68,9 +54,7 @@ CREATE TABLE inscription_request (
   id_U_SP             INT REFERENCES service_provider(idU_SP) ON DELETE CASCADE
 );
 
--- ============================================
--- AUTHORIZED PERSON
--- ============================================
+
 CREATE TABLE authorized_person (
   id_AP         SERIAL PRIMARY KEY,
   name          VARCHAR(100),
@@ -79,9 +63,6 @@ CREATE TABLE authorized_person (
   id_U_CL       INT REFERENCES client(idU_cl) ON DELETE CASCADE
 );
 
--- ============================================
--- DEPENDANT
--- ============================================
 CREATE TABLE dependant (
   id_dep        SERIAL PRIMARY KEY,
   name          VARCHAR(100),
@@ -90,9 +71,7 @@ CREATE TABLE dependant (
   id_U_CL       INT REFERENCES client(idU_cl) ON DELETE CASCADE
 );
 
--- ============================================
--- MEDICAL INFO
--- ============================================
+
 CREATE TABLE medical_info (
   id_dep      INT PRIMARY KEY REFERENCES dependant(id_dep) ON DELETE CASCADE,
   blood_type  VARCHAR(10),
@@ -101,18 +80,13 @@ CREATE TABLE medical_info (
   conditions  TEXT
 );
 
--- ============================================
--- DEPENDANT FILE
--- ============================================
 CREATE TABLE dependant_file (
   id_dep  INT PRIMARY KEY REFERENCES dependant(id_dep) ON DELETE CASCADE,
   link    TEXT,
   type    VARCHAR(50)
 );
 
--- ============================================
--- SERVICE CATEGORY
--- ============================================
+
 CREATE TABLE service_category (
   id_C        SERIAL PRIMARY KEY,
   name        VARCHAR(100) NOT NULL,
@@ -121,9 +95,6 @@ CREATE TABLE service_category (
   icon        TEXT
 );
 
--- ============================================
--- SERVICE
--- ============================================
 CREATE TABLE service (
   id_S        SERIAL PRIMARY KEY,
   name        VARCHAR(100) NOT NULL,
@@ -132,18 +103,14 @@ CREATE TABLE service (
   id_C        INT REFERENCES service_category(id_C) ON DELETE SET NULL
 );
 
--- ============================================
--- PROVIDING (which services a provider offers)
--- ============================================
+
 CREATE TABLE providing (
   idU_SP  INT REFERENCES service_provider(idU_SP) ON DELETE CASCADE,
   id_S    INT REFERENCES service(id_S) ON DELETE CASCADE,
   PRIMARY KEY (idU_SP, id_S)
 );
 
--- ============================================
--- DOCUMENT
--- ============================================
+
 CREATE TABLE document (
   id_DOC      SERIAL PRIMARY KEY,
   name        VARCHAR(100),
@@ -154,9 +121,7 @@ CREATE TABLE document (
   idU_CL      INT REFERENCES client(idU_cl) ON DELETE SET NULL
 );
 
--- ============================================
--- SPECIFICATIONS
--- ============================================
+
 CREATE TABLE specifications (
   id_SPEC   SERIAL PRIMARY KEY,
   url       TEXT,
@@ -164,38 +129,35 @@ CREATE TABLE specifications (
   id_DOC    INT REFERENCES document(id_DOC) ON DELETE CASCADE
 );
 
--- ============================================
--- BOOKING REQUEST (composite PK: id_R, idU_cl, idU_SP)
--- ============================================
+
 CREATE TABLE booking_request (
   id_R        SERIAL,
   idU_cl      INT REFERENCES client(idU_cl) ON DELETE CASCADE,
-  idU_SP      INT REFERENCES service_provider(idU_SP) ON DELETE CASCADE,
+  idU_sp      INT REFERENCES service_provider(idU_sp) ON DELETE CASCADE,
+  id_dep      INT REFERENCES dependant(id_dep) ON DELETE SET NULL,
   date        DATE NOT NULL,
   time        TIME NOT NULL,
   duration    INTERVAL,
   status      VARCHAR(20) DEFAULT 'pending',
   service_id  INT REFERENCES service(id_S),
-  PRIMARY KEY (id_R, idU_cl, idU_SP)
+  PRIMARY KEY (id_R, idU_cl, idU_sp)
 );
 
--- ============================================
--- BOOKING (composite PK: id_B, idU_cl, idU_SP)
--- ============================================
+
 CREATE TABLE booking (
   id_B              SERIAL,
   idU_cl            INT REFERENCES client(idU_cl) ON DELETE CASCADE,
   idU_SP            INT REFERENCES service_provider(idU_SP) ON DELETE CASCADE,
+  id_dep            INT REFERENCES dependant(id_dep) ON DELETE SET NULL,
   date              DATE NOT NULL,
   time              TIME NOT NULL,
   address           TEXT,
   status            VARCHAR(20) DEFAULT 'confirmed',
+  service_id        INT REFERENCES service(id_S),
   PRIMARY KEY (id_B, idU_cl, idU_SP)
 );
 
--- ============================================
--- PAYMENT
--- ============================================
+
 CREATE TABLE payment (
   id_P            SERIAL PRIMARY KEY,
   id_S            INT REFERENCES service(id_S),
@@ -206,9 +168,7 @@ CREATE TABLE payment (
   created_at      TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
 );
 
--- ============================================
--- TASK (composite PK: idT, idU_cl, idU_SP)
--- ============================================
+
 CREATE TABLE task (
   idT             SERIAL,
   idU_cl          INT REFERENCES client(idU_cl) ON DELETE CASCADE,
@@ -221,9 +181,7 @@ CREATE TABLE task (
   PRIMARY KEY (idT, idU_cl, idU_SP)
 );
 
--- ============================================
--- FILE
--- ============================================
+
 CREATE TABLE file (
   idF     SERIAL PRIMARY KEY,
   url     TEXT,
@@ -234,9 +192,6 @@ CREATE TABLE file (
   FOREIGN KEY (idT, idU_cl, idU_SP) REFERENCES task(idT, idU_cl, idU_SP) ON DELETE CASCADE
 );
 
--- ============================================
--- REPORT
--- ============================================
 CREATE TABLE report (
   id_reporter   VARCHAR(100) REFERENCES account(email) ON DELETE CASCADE,
   id_reported   VARCHAR(100) REFERENCES account(email) ON DELETE CASCADE,
@@ -246,9 +201,6 @@ CREATE TABLE report (
   PRIMARY KEY (id_reporter, id_reported)
 );
 
--- ============================================
--- FEEDBACK (composite PK: idU_cl, idU_SP)
--- ============================================
 CREATE TABLE feedback (
   idU_cl          INT REFERENCES client(idU_cl) ON DELETE CASCADE,
   idU_SP          INT REFERENCES service_provider(idU_SP) ON DELETE CASCADE,
@@ -259,9 +211,6 @@ CREATE TABLE feedback (
   PRIMARY KEY (idU_cl, idU_SP)
 );
 
--- ============================================
--- NOTIFICATION (keep as-is per your request)
--- ============================================
 CREATE TABLE notification (
   id            SERIAL PRIMARY KEY,
   user_id       INT REFERENCES "user"(id) ON DELETE CASCADE,

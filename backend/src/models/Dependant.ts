@@ -6,7 +6,7 @@ interface DependantAttributes {
   name?: string;
   date_of_birth?: Date;
   relationship?: string;
-  id_U_CL: number;
+  idU_CL: number;
 }
 
 interface DependantCreationAttributes extends Optional<DependantAttributes, 'id_dep' | 'name' | 'date_of_birth' | 'relationship'> {}
@@ -16,7 +16,7 @@ export class Dependant extends Model<DependantAttributes, DependantCreationAttri
   public name?: string;
   public date_of_birth?: Date;
   public relationship?: string;
-  public id_U_CL!: number;
+  public idU_CL!: number;
 }
 
 Dependant.init(
@@ -25,6 +25,7 @@ Dependant.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+      field: 'id_dep',
     },
     name: {
       type: DataTypes.STRING(100),
@@ -35,12 +36,13 @@ Dependant.init(
     relationship: {
       type: DataTypes.STRING(50),
     },
-    id_U_CL: {
+    idU_CL: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'idU_CL',
       references: {
         model: 'client',
-        key: 'idU_cl',
+        key: 'idU_CL',
       },
     },
   },
@@ -50,3 +52,5 @@ Dependant.init(
     timestamps: false,
   }
 );
+
+export default Dependant;

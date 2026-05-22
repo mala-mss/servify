@@ -42,15 +42,18 @@ const ChatInbox: React.FC = () => {
   };
 
   const getOtherUser = (conv: Conversation) => {
-    if (user?.role === 'client') {
+    const isCurrentUserClient = Number(conv.idu_cl) === Number(user?.id);
+    const otherUserObj = isCurrentUserClient ? conv.provider?.user : conv.client?.user;
+    
+    if (isCurrentUserClient) {
       return {
-        ...conv.provider?.user,
+        ...otherUserObj,
         role: 'SERVICE PROVIDER',
         color: '#2FB0BC'
       };
     } else {
       return {
-        ...conv.client?.user,
+        ...otherUserObj,
         role: 'CLIENT',
         color: '#7C3AED'
       };

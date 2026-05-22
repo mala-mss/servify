@@ -23,6 +23,7 @@ Specification.init(
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
+      field: 'id_spec',
     },
     url: {
       type: DataTypes.TEXT,
@@ -33,9 +34,10 @@ Specification.init(
     id_DOC: {
       type: DataTypes.INTEGER,
       allowNull: false,
+      field: 'id_doc',
       references: {
         model: 'document',
-        key: 'id_DOC',
+        key: 'id_doc',
       },
     },
   },

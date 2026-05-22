@@ -1,18 +1,20 @@
 // src/pages/client/ProviderDetail.jsx
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import axiosInstance from "@/controllers/api/axiosInstance";
 import { useTheme } from "@/controllers/context/ThemeContext";
 import { useAuth } from "@/controllers/context/AuthContext";
 import { startConversation } from "@/controllers/api/chatApi";
+import LeaveFeedback from "./LeaveFeedback";
 
 export default function ProviderDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [provider, setProvider] = useState(null);
+  const [provider, setProvider] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const { mode: theme, palette: p } = useTheme();
   const { user } = useAuth();
   const [sortBy, setSortBy] = useState('recent');
@@ -26,29 +28,36 @@ export default function ProviderDetail() {
     }
   };
 
-  useEffect(() => {
-    const fetchProvider = async () => {
-      try {
-        setLoading(true);
-        const res = await axiosInstance.get(`/users/providers/${id}`);
-        if (res.data.success) {
-          setProvider(res.data.provider);
-        }
-      } catch (error) {
-        console.error("Failed to fetch provider:", error);
-      } finally {
-        setLoading(false);
+  const fetchProvider = async () => {
+    try {
+      setLoading(true);
+      const res = await axiosInstance.get(`/users/providers/${id}`);
+      if (res.data.success) {
+        setProvider(res.data.provider);
       }
-    };
+    } catch (error) {
+      console.error("Failed to fetch provider:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchProvider();
   }, [id]);
 
-  const sortedReviews = provider?.reviews ? [...provider.reviews].sort((a, b) => {
+  const sortedReviews = provider?.reviews ? [...provider.reviews].sort((a: any, b: any) => {
     if (sortBy === 'recent') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     if (sortBy === 'high') return b.overall_rating - a.overall_rating;
     if (sortBy === 'low') return a.overall_rating - b.overall_rating;
     return 0;
   }) : [];
+
+  const calculatedRating = provider?.reviews?.length > 0
+    ? (provider.reviews.reduce((acc: number, rev: any) => acc + Number(rev.overall_rating || 0), 0) / provider.reviews.length).toFixed(1)
+    : "0.0";
+  
+  const reviewCount = provider?.reviews?.length || 0;
 
   const handleBookNow = () => {
     if (location.state && location.state.serviceName) {
@@ -84,8 +93,8 @@ export default function ProviderDetail() {
                   <p style={{ ...styles.subtitle, color: p.primary }}>{provider.services?.join(", ") || "General Provider"}</p>
                   <div style={styles.ratingRow}>
                     <span style={{ color: "#FFD700" }}>★</span>
-                    <span style={{ fontWeight: 600, marginLeft: 4, color: p.text }}>{provider.rating}</span>
-                    <span style={{ color: p.textMuted, marginLeft: 8 }}>({provider.review_count} reviews)</span>
+                    <span style={{ fontWeight: 600, marginLeft: 4, color: p.text }}>{calculatedRating}</span>
+                    <span style={{ color: p.textMuted, marginLeft: 8 }}>({reviewCount} reviews)</span>
                   </div>
                 </div>
               </div>
@@ -112,7 +121,7 @@ export default function ProviderDetail() {
               <section style={styles.section}>
                 <h2 style={{ ...styles.sectionTitle, color: p.text }}>Specialties</h2>
                 <div style={styles.tagRow}>
-                  {(provider.categories || []).map(cat => (
+                  {(provider.categories || []).map((cat: any) => (
                     <span key={cat} style={{ ...styles.tag, background: p.cardBg, borderColor: p.border, color: p.text }}>{cat}</span>
                   ))}
                 </div>
@@ -121,7 +130,7 @@ export default function ProviderDetail() {
               <section style={styles.section}>
                 <h2 style={{ ...styles.sectionTitle, color: p.text }}>Certifications & Documents</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  {provider.documents?.filter(doc => !doc.idU_CL).map((doc, idx) => (
+                  {provider.documents?.filter((doc: any) => !doc.idU_CL).map((doc: any, idx: number) => (
                     <a 
                       key={idx} 
                       href={doc.link} 
@@ -136,7 +145,7 @@ export default function ProviderDetail() {
                       </div>
                     </a>
                   ))}
-                  {(!provider.documents || provider.documents.filter(doc => !doc.idU_CL).length === 0) && (
+                  {(!provider.documents || provider.documents.filter((doc: any) => !doc.idU_CL).length === 0) && (
                     <p style={{ color: p.textMuted, fontSize: '14px' }}>No public documents available.</p>
                   )}
                 </div>
@@ -146,6 +155,23 @@ export default function ProviderDetail() {
                 <div style={styles.reviewHeader}>
                   <h2 style={{ ...styles.sectionTitle, color: p.text }}>Client Reviews</h2>
                   <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    {user?.role === 'client' && (
+                      <button 
+                        onClick={() => setShowFeedbackModal(true)}
+                        style={{ 
+                          background: 'rgba(47,176,188,0.1)', 
+                          color: p.primary, 
+                          border: `1px solid ${p.primary}`, 
+                          borderRadius: '8px', 
+                          padding: '6px 16px', 
+                          fontSize: '13px', 
+                          fontWeight: 600, 
+                          cursor: 'pointer' 
+                        }}
+                      >
+                        Write a Review
+                      </button>
+                    )}
                     <select 
                       value={sortBy} 
                       onChange={(e) => setSortBy(e.target.value)}
@@ -156,14 +182,14 @@ export default function ProviderDetail() {
                       <option value="low">Lowest Rated</option>
                     </select>
                     <div style={styles.ratingBadge}>
-                      <span style={{ color: "#FFD700" }}>★</span> {provider.rating}
+                      <span style={{ color: "#FFD700" }}>★</span> {calculatedRating}
                     </div>
                   </div>
                 </div>
                 
                 <div style={styles.reviewsList}>
                   {sortedReviews.length > 0 ? (
-                    sortedReviews.map((rev, idx) => (
+                    sortedReviews.map((rev: any, idx: number) => (
                       <div key={idx} style={{ ...styles.reviewCard, background: p.cardBg, borderColor: p.border }}>
                         <div style={styles.reviewUser}>
                           <div style={{ ...styles.avatarSmall, background: theme === 'dark' ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.05)", color: p.text }}>{rev.user_name?.[0] || "C"}</div>
@@ -224,6 +250,19 @@ export default function ProviderDetail() {
           </div>
         </motion.div>
       </div>
+
+      <AnimatePresence>
+        {showFeedbackModal && (
+          <LeaveFeedback 
+            providerId={Number(id)} 
+            onClose={() => setShowFeedbackModal(false)} 
+            onSuccess={() => {
+              setShowFeedbackModal(false);
+              fetchProvider();
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -262,15 +301,3 @@ const styles = {
   avatarSmall: { width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 14 },
   reviewText: { fontSize: 15, lineHeight: "1.6" }
 };
-
-
-
-
-
-
-
-
-
-
-
-

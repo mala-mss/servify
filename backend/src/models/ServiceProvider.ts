@@ -36,10 +36,10 @@ ServiceProvider.init(
     idU_SP: {
       type: DataTypes.INTEGER,
       primaryKey: true,
-      field: 'idu_sp',
+      field: 'idU_SP',
       references: {
         model: 'user',
-        key: 'id',
+        key: 'IdU',
       },
     },
     bio: {
@@ -84,3 +84,5 @@ ServiceProvider.init(
     timestamps: false,
   }
 );
+
+export default ServiceProvider;
